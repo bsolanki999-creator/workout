@@ -98,6 +98,11 @@
   input:focus,select:focus,textarea:focus{outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(233,180,92,.15)}
   label{display:block; font-size:12px; color:var(--ink-dim); margin-bottom:5px; font-weight:500; letter-spacing:.03em}
   .field{flex:1; min-width:110px}
+  .ex-thumb{
+    width:100%; max-height:190px; object-fit:cover; border-radius:14px;
+    border:1px solid var(--line); margin-top:10px; display:block; cursor:pointer;
+  }
+  .bx-thumb{width:38px; height:38px; border-radius:10px; object-fit:cover; flex:none; border:1px solid var(--line)}
   .ic-svg{vertical-align:-2.5px}
   .btn .ic-svg{margin-right:7px; vertical-align:-3px}
   .hidden{display:none!important}
@@ -318,6 +323,8 @@
     <button class="btn block" id="newRoutineBtn">＋ Create workout</button>
     <button class="btn ice block" id="logCardioBtn" style="margin-top:10px"><svg class="ic-svg " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Log cardio</button>
     <button class="btn block" id="quickLiftBtn" style="margin-top:10px"><svg class="ic-svg " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>Quick lift — one exercise</button>
+    <button class="btn ice block" id="ropeBtn" style="margin-top:10px">Jump rope intervals</button>
+    <button class="btn onyx block" id="lagBtn" style="margin-top:10px">Lagging body part focus</button>
     <button class="btn onyx block" id="bodyBtn" style="margin-top:10px"><svg class="ic-svg " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 8.7 15.3 2.7a1 1 0 0 0-1.4 0L2.7 13.9a1 1 0 0 0 0 1.4l6 6a1 1 0 0 0 1.4 0L21.3 10.1a1 1 0 0 0 0-1.4zM7.5 10.5l2 2M10.5 7.5l2 2M13.5 4.5l2 2"/></svg>Body measurements</button>
 
     <div class="card" id="weekCard" style="padding:14px 16px; margin-top:14px">
@@ -359,6 +366,7 @@
       <button class="btn small ghost" id="exportBtn"><svg class="ic-svg " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>CSV</button>
       <input type="file" id="restoreFile" accept=".json,application/json" class="hidden">
     </div>
+    <div id="backupStatus" class="card" style="padding:12px 16px; font-size:13.5px"></div>
     <div id="histList"></div>
   </section>
 </main>
@@ -404,6 +412,15 @@
       <div class="row" style="margin-top:10px">
         <div class="field"><label for="exVariant">Variant / grip</label><input id="exVariant" placeholder="Wide grip, Hammer…"></div>
         <div class="field"><label for="exAngle">Angle</label><input id="exAngle" placeholder="45°, Neutral…"></div>
+      </div>
+      <div style="margin-top:10px">
+        <label>Visual (photo or GIF) — optional</label>
+        <div class="row">
+          <button class="btn ghost small" id="exPicBtn" style="flex:1">Choose image / GIF</button>
+          <button class="btn ghost small hidden" id="exPicClear">Remove</button>
+          <input type="file" id="exPicFile" accept="image/*" class="hidden">
+        </div>
+        <img id="exPicPreview" class="hidden" style="margin-top:8px; width:100%; max-height:170px; object-fit:cover; border-radius:12px; border:1px solid var(--line)">
       </div>
       <div class="row" style="margin-top:10px">
         <div class="field" id="exBandModeField">
@@ -635,6 +652,109 @@
   </div>
 </div>
 
+<!-- JUMP ROPE SHEET -->
+<div class="modal hidden" id="ropeModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>Jump rope</h3>
+    <div class="sub">Set a work round by time or jump count, then rest and repeat. Every round is logged.</div>
+
+    <div id="ropeSetup">
+      <label>Round goal</label>
+      <div class="chips" style="margin-bottom:10px">
+        <button class="chip sel" id="ropeModeTime">By time</button>
+        <button class="chip" id="ropeModeCount">By jump count</button>
+      </div>
+      <div class="row" id="ropeTimeRow">
+        <div class="field"><label for="ropeMin">Minutes</label><input id="ropeMin" type="number" min="0" inputmode="numeric" placeholder="2"></div>
+        <div class="field"><label for="ropeSec">Seconds</label><input id="ropeSec" type="number" min="0" max="59" inputmode="numeric" placeholder="0"></div>
+      </div>
+      <div class="row hidden" id="ropeCountRow">
+        <div class="field"><label for="ropeJumps">Target jumps</label><input id="ropeJumps" type="number" min="1" inputmode="numeric" placeholder="100"></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="field"><label for="ropeRest">Rest between rounds (sec)</label><input id="ropeRest" type="number" min="5" step="5" value="60"></div>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn" id="ropeStartBtn" style="flex:1">Start round 1</button>
+        <button class="btn ghost" id="ropeCancel">Close</button>
+      </div>
+    </div>
+
+    <div id="ropeLive" class="hidden" style="text-align:center">
+      <div class="eyebrow" id="ropeRoundLbl" style="text-align:center">Round 1</div>
+      <div id="ropeClock" style="font-family:var(--serif); font-weight:600; font-size:62px; font-variant-numeric:tabular-nums; margin:6px 0 4px">0:00</div>
+      <div id="ropeSub" class="muted" style="margin-bottom:14px"></div>
+      <div class="row" style="justify-content:center">
+        <button class="btn" id="ropeDoneBtn" style="flex:1">Round done ▸ rest</button>
+        <button class="btn ghost" id="ropeStopBtn">Finish workout</button>
+      </div>
+    </div>
+
+    <div id="ropeRestView" class="hidden" style="text-align:center">
+      <div class="eyebrow" style="text-align:center">Resting</div>
+      <div id="ropeRestClock" style="font-family:var(--serif); font-weight:600; font-size:62px; font-variant-numeric:tabular-nums; margin:6px 0 10px; color:var(--gold)">0:00</div>
+      <div class="row" style="justify-content:center">
+        <button class="btn" id="ropeNextBtn" style="flex:1">Start next round</button>
+        <button class="btn ghost" id="ropeStopBtn2">Finish workout</button>
+      </div>
+    </div>
+
+    <div class="eyebrow" style="margin-top:20px">This session</div>
+    <div id="ropeLog" class="hist-detail" style="margin-top:0"></div>
+  </div>
+</div>
+
+<!-- LAGGING BODY PART SHEET -->
+<div class="modal hidden" id="lagModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>Lagging body part</h3>
+    <div class="sub">Target one weak spot. Pick the muscle, then the side, then the exercise — it's tracked separately so you can see it catch up.</div>
+
+    <label>Body part</label>
+    <div class="chips" id="lagPartChips" style="margin-bottom:8px"></div>
+    <input id="lagPartCustom" placeholder="Or type one — rear delt, upper chest…">
+
+    <div id="lagSideWrap" class="hidden" style="margin-top:14px">
+      <label>Which side?</label>
+      <div class="chips" id="lagSideChips"></div>
+    </div>
+
+    <div id="lagExWrap" class="hidden" style="margin-top:14px">
+      <label>Exercise</label>
+      <div class="chips" id="lagExChips" style="margin-bottom:8px"></div>
+      <input id="lagExName" placeholder="Or type a new exercise">
+      <div class="row" style="margin-top:10px">
+        <div class="field">
+          <label for="lagType">Load type</label>
+          <select id="lagType">
+            <option value="bodyweight">Bodyweight</option>
+            <option value="band">Resistance band</option>
+            <option value="dumbbell" selected>Dumbbell</option>
+            <option value="barbell">Barbell</option>
+            <option value="cable">Cable</option>
+            <option value="machine">Machine</option>
+          </select>
+        </div>
+        <div class="field"><label for="lagWeight">Starting weight (lb)</label><input id="lagWeight" type="number" min="0" step="0.25" placeholder="0"></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="field"><label for="lagReps">Target reps</label><input id="lagReps" type="number" min="1" placeholder="8"></div>
+        <div class="field"><label for="lagRest">Rest (sec)</label><input id="lagRest" type="number" min="10" step="5" value="90"></div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:16px">
+      <button class="btn" id="lagStartBtn" style="flex:1">Start focus session</button>
+      <button class="btn ghost" id="lagCancel">Cancel</button>
+    </div>
+
+    <div class="eyebrow" style="margin-top:20px">Your focus areas</div>
+    <div id="lagHistory" class="hist-detail" style="margin-top:0"></div>
+  </div>
+</div>
+
 <!-- TIMER -->
 <div id="timerOverlay" class="hidden" role="dialog" aria-label="Rest timer">
   <div class="lbl">REST</div>
@@ -819,7 +939,7 @@ function show(view){
     $('view-'+v).classList.toggle('hidden', v!==view);
     $('tab-'+v).classList.toggle('active', v===view);
   });
-  if(view==='history') renderHistory();
+  if(view==='history'){ renderHistory(); renderBackupStatus(); }
   if(view==='home') renderHome();
 }
 $('tab-home').onclick=()=>show('home');
@@ -909,6 +1029,7 @@ function openBuilder(rt){
   finished().forEach(s=>s.exercises.forEach(e=>names.add(e.name)));
   $('exSuggest').innerHTML=[...names].map(n=>`<option value="${n}">`).join('');
   cancelBxEdit();
+  setExPic(null);
   renderBxList();
   $('builderModal').classList.remove('hidden');
 }
@@ -934,6 +1055,7 @@ function renderBxList(){
     const item=document.createElement('div');
     item.className='bx-item'+(editingBx===i?' editing':'');
     item.innerHTML=`
+      ${e.pic?`<img class="bx-thumb" src="${e.pic}" alt="">`:''}
       <div class="ord">
         <button class="iconbtn" data-up ${i===0?'disabled':''}><svg class="ic-svg " width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg></button>
         <button class="iconbtn" data-dn ${i===builder.exercises.length-1?'disabled':''}><svg class="ic-svg " width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
@@ -966,6 +1088,7 @@ function startBxEdit(i){
   $('exStartWeight').value=e.startWeight||'';
   $('exTargetReps').value=e.targetReps||'';
   $('exRest').value=e.rest||90;
+  setExPic(e.pic||null);
   $('addBxBtn').textContent='Update exercise';
   $('exName').focus();
   renderBxList();
@@ -984,10 +1107,12 @@ $('addBxBtn').onclick=()=>{
     bandStrength:($('exType').value==='band'||$('exBandMode').value!=='none')?parseBandForce($('exBandStrength').value):'',
     startWeight: toLb(parseFloat($('exStartWeight').value)||0),
     targetReps: parseInt($('exTargetReps').value)||10,
-    rest: parseInt($('exRest').value)||90
+    rest: parseInt($('exRest').value)||90,
+    pic: exPicData||null
   };
   if(editingBx!=null){ builder.exercises[editingBx]=def; toast('Exercise updated'); cancelBxEdit(); }
   else builder.exercises.push(def);
+  setExPic(null);
   ['exName','exVariant','exAngle','exStartWeight','exTargetReps'].forEach(id=>$(id).value='');
   $('exBandMode').value='none'; $('exType').value='bodyweight'; $('exType').dispatchEvent(new Event('change'));
   $('bandStrengthField').classList.add('hidden');
@@ -1139,6 +1264,7 @@ function renderSession(){
         </div>
         <div><button class="iconbtn" data-del="${xi}" aria-label="Skip exercise today"><svg class="ic-svg " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
       </div>
+      ${ex.pic?`<img class="ex-thumb" src="${ex.pic}" alt="${ex.name} form reference" data-pic="${xi}">`:''}
       <div class="sets">${setsHtml}${upcoming}</div>
       <div class="logger">
         ${ex.recNote?`<div class="coach">${ex.recNote}</div>`:''}
@@ -1223,10 +1349,14 @@ function logSet(xi,repeat){
   // actual rest since the previous set was logged
   const prevSet=ex.sets[ex.sets.length-1];
   if(prevSet){
-    set.restTaken=Math.min(3600,Math.round((set.t-prevSet.t)/1000));
+    // prefer the measured rest window; fall back to log-gap only if the timer never ran
+    let rest = (lastRestSec!=null) ? lastRestSec : Math.round((set.t-prevSet.t)/1000);
+    if(restInt && restStartedAt) rest = Math.round((Date.now()-restStartedAt)/1000);  // logged mid-rest
+    set.restTaken=Math.max(0,Math.min(3600,rest));
     if(pendingSkip) set.restSkipped=true;
   }
   pendingSkip=false;
+  lastRestSec=null;
   const hb=historicalBest(ex.name);
   if(hb && (weight>hb.weight || (weight===hb.weight && reps>hb.reps))){ set.pr=true; toast('★ New personal record!'); }
   ex.sets.push(set);
@@ -1469,6 +1599,276 @@ function drawBmChart(){
   ctx.textAlign='right'; ctx.fillText(fmtDate(pts[pts.length-1].t),W-6,H-6); ctx.textAlign='left';
 }
 
+
+
+
+/* ---------- JUMP ROPE INTERVALS ---------- */
+let ropeMode='time', ropeRounds=[], ropeInt=null, ropeStart=0, ropeRestInt=null, ropeRestLeft=0;
+function openRope(){
+  ropeRounds=[]; clearInterval(ropeInt); clearInterval(ropeRestInt);
+  $('ropeSetup').classList.remove('hidden');
+  $('ropeLive').classList.add('hidden');
+  $('ropeRestView').classList.add('hidden');
+  $('ropeStartBtn').textContent='Start round 1';
+  renderRopeLog();
+  $('ropeModal').classList.remove('hidden');
+}
+$('ropeBtn').onclick=openRope;
+$('ropeCancel').onclick=()=>{ clearInterval(ropeInt); clearInterval(ropeRestInt); $('ropeModal').classList.add('hidden'); };
+$('ropeModeTime').onclick=()=>{
+  ropeMode='time';
+  $('ropeModeTime').classList.add('sel'); $('ropeModeCount').classList.remove('sel');
+  $('ropeTimeRow').classList.remove('hidden'); $('ropeCountRow').classList.add('hidden');
+};
+$('ropeModeCount').onclick=()=>{
+  ropeMode='count';
+  $('ropeModeCount').classList.add('sel'); $('ropeModeTime').classList.remove('sel');
+  $('ropeCountRow').classList.remove('hidden'); $('ropeTimeRow').classList.add('hidden');
+};
+function ropeGoalSec(){ return (parseInt($('ropeMin').value)||0)*60 + (parseInt($('ropeSec').value)||0); }
+function startRopeRound(){
+  clearInterval(ropeRestInt);
+  $('ropeSetup').classList.add('hidden');
+  $('ropeRestView').classList.add('hidden');
+  $('ropeLive').classList.remove('hidden');
+  $('ropeRoundLbl').textContent=`Round ${ropeRounds.length+1}`;
+  ropeStart=Date.now();
+  const goal=ropeGoalSec();
+  $('ropeSub').textContent = ropeMode==='count'
+    ? `Target: ${parseInt($('ropeJumps').value)||0} jumps — tap done when you finish`
+    : (goal?`Target: ${fmtClock(goal)}`:'Counting up — tap done when you finish');
+  clearInterval(ropeInt);
+  ropeInt=setInterval(()=>{
+    const el=Math.round((Date.now()-ropeStart)/1000);
+    if(ropeMode==='time' && goal){
+      const left=goal-el;
+      $('ropeClock').textContent=fmtClock(Math.max(0,left));
+      if(left===5 && soundOn){ const a=$('sndPhase2'); try{a.currentTime=0;a.play();}catch(e){} }
+      if(left<=0){ if(navigator.vibrate) navigator.vibrate([300,100,300]); finishRopeRound(); }
+    } else {
+      $('ropeClock').textContent=fmtClock(el);
+    }
+  },250);
+}
+$('ropeStartBtn').onclick=()=>{
+  if(ropeMode==='time' && !ropeGoalSec() && !confirmFreeCount()) {}
+  startRopeRound();
+};
+function confirmFreeCount(){ return true; }
+function finishRopeRound(){
+  clearInterval(ropeInt);
+  const dur=Math.round((Date.now()-ropeStart)/1000);
+  const round={n:ropeRounds.length+1, dur, t:Date.now()};
+  if(ropeMode==='count') round.jumps=parseInt($('ropeJumps').value)||null;
+  ropeRounds.push(round);
+  renderRopeLog();
+  // rest phase
+  ropeRestLeft=parseInt($('ropeRest').value)||60;
+  $('ropeLive').classList.add('hidden');
+  $('ropeRestView').classList.remove('hidden');
+  $('ropeRestClock').textContent=fmtClock(ropeRestLeft);
+  clearInterval(ropeRestInt);
+  ropeRestInt=setInterval(()=>{
+    ropeRestLeft--;
+    $('ropeRestClock').textContent=fmtClock(Math.max(0,ropeRestLeft));
+    if(ropeRestLeft===10 && soundOn){ const a=$('sndPhase1'); try{a.currentTime=0;a.play();}catch(e){} }
+    if(ropeRestLeft===5){ const a1=$('sndPhase1'); try{a1.pause();a1.currentTime=0;}catch(e){}
+      if(soundOn){ const a2=$('sndPhase2'); try{a2.currentTime=0;a2.play();}catch(e){} } }
+    if(ropeRestLeft<=0){
+      clearInterval(ropeRestInt);
+      if(navigator.vibrate) navigator.vibrate([300,100,300]);
+      toast('Rest over — next round');
+    }
+  },1000);
+}
+$('ropeDoneBtn').onclick=finishRopeRound;
+$('ropeNextBtn').onclick=()=>{ stopPhaseAudio(); startRopeRound(); };
+function saveRopeSession(){
+  clearInterval(ropeInt); clearInterval(ropeRestInt); stopPhaseAudio();
+  if(!ropeRounds.length){ $('ropeModal').classList.add('hidden'); return; }
+  const total=ropeRounds.reduce((a,r)=>a+r.dur,0);
+  const jumps=ropeRounds.reduce((a,r)=>a+(r.jumps||0),0);
+  DB.cardio.push({
+    activity:'Jump rope',
+    equip:`${ropeRounds.length} rounds${jumps?` · ${jumps} jumps`:''}`,
+    dur:total, t:Date.now(),
+    activeCal:null, totalCal:null, avgHR:null, hrLow:null, hrHigh:null,
+    notes:ropeRounds.map(r=>`R${r.n}: ${fmtClock(r.dur)}${r.jumps?` / ${r.jumps} jumps`:''}`).join(' · '),
+    rounds:ropeRounds
+  });
+  saveDB();
+  $('ropeModal').classList.add('hidden');
+  toast(`Jump rope saved — ${ropeRounds.length} rounds, ${fmtClock(total)}`);
+  renderHome();
+}
+$('ropeStopBtn').onclick=saveRopeSession;
+$('ropeStopBtn2').onclick=saveRopeSession;
+function renderRopeLog(){
+  const el=$('ropeLog');
+  if(!ropeRounds.length){ el.innerHTML='<div class="muted">No rounds yet.</div>'; return; }
+  const total=ropeRounds.reduce((a,r)=>a+r.dur,0);
+  el.innerHTML=ropeRounds.map(r=>`<div>Round ${r.n}: <b>${fmtClock(r.dur)}</b>${r.jumps?` · ${r.jumps} jumps`:''}</div>`).join('')
+    +`<div style="margin-top:6px"><b>Total: ${fmtClock(total)}</b></div>`;
+}
+
+/* ---------- exercise images / GIFs ---------- */
+let exPicData=null;
+function resizeImage(file, maxDim, cb){
+  // GIFs must stay untouched to keep animation; others get downscaled to save storage
+  if(file.type==='image/gif'){
+    const r=new FileReader(); r.onload=()=>cb(r.result); r.readAsDataURL(file); return;
+  }
+  const r=new FileReader();
+  r.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const sc=Math.min(1, maxDim/Math.max(img.width,img.height));
+      const c=document.createElement('canvas');
+      c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      try{ cb(c.toDataURL('image/jpeg',0.75)); }catch(e){ cb(r.result); }
+    };
+    img.onerror=()=>cb(r.result);
+    img.src=r.result;
+  };
+  r.readAsDataURL(file);
+}
+$('exPicBtn').onclick=()=>$('exPicFile').click();
+$('exPicFile').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  if(f.size>6*1024*1024) return toast('That file is very large — try one under 6 MB');
+  resizeImage(f, 700, data=>{
+    exPicData=data;
+    $('exPicPreview').src=data;
+    $('exPicPreview').classList.remove('hidden');
+    $('exPicClear').classList.remove('hidden');
+    toast('Image attached');
+  });
+  e.target.value='';
+};
+$('exPicClear').onclick=()=>{
+  exPicData=null;
+  $('exPicPreview').classList.add('hidden');
+  $('exPicClear').classList.add('hidden');
+};
+function setExPic(data){
+  exPicData=data||null;
+  if(data){ $('exPicPreview').src=data; $('exPicPreview').classList.remove('hidden'); $('exPicClear').classList.remove('hidden'); }
+  else { $('exPicPreview').classList.add('hidden'); $('exPicClear').classList.add('hidden'); }
+}
+
+/* ---------- LAGGING BODY PART FOCUS ---------- */
+const LAG_PARTS = ["Biceps","Triceps","Forearms","Shoulders","Chest","Back","Glutes","Quads","Hamstrings","Calves","Abs"];
+const LAG_SIDES = ["Left","Right","Both"];
+let lagPart=null, lagSide=null, lagEx=null;
+function openLag(){
+  lagPart=lagSide=lagEx=null;
+  $('lagPartCustom').value=''; $('lagExName').value='';
+  $('lagWeight').value=''; $('lagReps').value=''; $('lagRest').value='90';
+  $('lagSideWrap').classList.add('hidden');
+  $('lagExWrap').classList.add('hidden');
+  renderLagParts(); renderLagHistory();
+  $('lagModal').classList.remove('hidden');
+}
+$('lagBtn').onclick=openLag;
+$('lagCancel').onclick=()=>$('lagModal').classList.add('hidden');
+function renderLagParts(){
+  const w=$('lagPartChips'); w.innerHTML='';
+  LAG_PARTS.forEach(p=>{
+    const b=document.createElement('button');
+    b.className='chip'+(lagPart===p?' sel':'');
+    b.textContent=p;
+    b.onclick=()=>{ lagPart=p; $('lagPartCustom').value=''; lagSide=null; renderLagParts(); showLagSides(); };
+    w.appendChild(b);
+  });
+}
+$('lagPartCustom').addEventListener('input',e=>{
+  lagPart=e.target.value.trim()||null; renderLagParts();
+  if(lagPart) showLagSides(); else $('lagSideWrap').classList.add('hidden');
+});
+function showLagSides(){
+  $('lagSideWrap').classList.remove('hidden');
+  const w=$('lagSideChips'); w.innerHTML='';
+  LAG_SIDES.forEach(s=>{
+    const b=document.createElement('button');
+    b.className='chip'+(lagSide===s?' sel':'');
+    b.textContent=s;
+    b.onclick=()=>{ lagSide=s; showLagSides(); showLagExercises(); };
+    w.appendChild(b);
+  });
+}
+function showLagExercises(){
+  $('lagExWrap').classList.remove('hidden');
+  const w=$('lagExChips'); w.innerHTML='';
+  const defs=knownExerciseDefs();
+  const names=[...defs.values()].map(e=>e.name).slice(0,10);
+  if(!names.length){ w.innerHTML='<span class="muted">No saved exercises yet — type one below.</span>'; return; }
+  names.forEach(n=>{
+    const b=document.createElement('button');
+    b.className='chip'+(lagEx===n?' sel':'');
+    b.textContent=n;
+    b.onclick=()=>{
+      lagEx=n; $('lagExName').value='';
+      const def=defs.get(n.toLowerCase())||{};
+      $('lagType').value=def.type||'dumbbell';
+      $('lagWeight').value=def.startWeight||'';
+      $('lagReps').value=def.targetReps||'';
+      $('lagRest').value=def.rest||90;
+      showLagExercises();
+    };
+    w.appendChild(b);
+  });
+}
+$('lagExName').addEventListener('input',()=>{ lagEx=null; showLagExercises(); });
+$('lagStartBtn').onclick=async ()=>{
+  const part=$('lagPartCustom').value.trim()||lagPart;
+  if(!part) return toast('Pick a body part');
+  if(!lagSide) return toast('Pick a side');
+  const exName=$('lagExName').value.trim()||lagEx;
+  if(!exName) return toast('Pick or type an exercise');
+  if(active && !await appConfirm('You have an unfinished session. Discard it and start fresh?','Discard')) return;
+  const label=`${part} (${lagSide})`;
+  const fullName=`${exName} — ${lagSide} ${part}`;   // unique name keeps its own history & charts
+  active={
+    routineId:null, group:`FOCUS: ${label}`, lagging:{part, side:lagSide},
+    start:Date.now(), notes:'',
+    exercises:[{
+      name: fullName, type:$('lagType').value,
+      variant:'', angle:'', bandMode:'none', bandStrength:'',
+      startWeight: parseFloat($('lagWeight').value)||0,
+      targetReps: parseInt($('lagReps').value)||8,
+      rest: parseInt($('lagRest').value)||90,
+      sets:[]
+    }]
+  };
+  loggerState={};
+  saveDB();
+  $('lagModal').classList.add('hidden');
+  $('sessNotes').value='';
+  show('session'); renderSession();
+  toast(`Focus session: ${label}`);
+};
+function renderLagHistory(){
+  const el=$('lagHistory');
+  const sess=finished().filter(s=>s.lagging);
+  if(!sess.length){ el.innerHTML='<div class="muted">No focus sessions yet. Your weak-point work will be tracked here separately.</div>'; return; }
+  const byArea={};
+  sess.forEach(s=>{
+    const k=`${s.lagging.part} (${s.lagging.side})`;
+    byArea[k]=byArea[k]||[];
+    byArea[k].push(s);
+  });
+  el.innerHTML=Object.entries(byArea).map(([k,list])=>{
+    const latest=list.sort((a,b)=>b.start-a.start)[0];
+    const ex=latest.exercises.find(e=>e.sets.length);
+    const best=ex?bestSet(ex.sets):null;
+    return `<div style="padding:8px 0; border-bottom:1px solid var(--line)">
+      <b>${k}</b> — ${list.length} session${list.length!==1?'s':''} · last ${fmtDateLong(latest.start)}
+      ${best?`<br><span class="muted">Best set: ${best.reps} × ${dispW(best.weight)||'BW'}${best.weight?' lb':''}</span>`:''}
+    </div>`;
+  }).join('');
+}
+
 /* ---------- QUICK LIFT ---------- */
 let quickSel=null;
 function knownExerciseDefs(){
@@ -1612,7 +2012,7 @@ function drawChart(data){
 /* ---------- REST TIMER ---------- */
 const RING_C=2*Math.PI*111;
 $('ringFg').style.strokeDasharray=RING_C;
-let restTotal=0, restLeft=0, restInt=null, audioCtx=null, pendingSkip=false;
+let restTotal=0, restLeft=0, restInt=null, audioCtx=null, pendingSkip=false, restStartedAt=0, lastRestSec=null;
 /* Primary sound path: HTML <audio> elements (most reliable on iOS).
    iOS requires the first play() to happen inside a user gesture, so we
    "prime" both clips silently on the first tap anywhere. */
@@ -1659,6 +2059,8 @@ function startRest(seconds,exName,recHtml){
   stopRest();
   stopPhaseAudio();
   pendingSkip=false;
+  restStartedAt=Date.now();       // rest window opens now
+  lastRestSec=null;
   restTotal=restLeft=seconds;
   $('timerNext').textContent=`Next set: ${exName}`;
   $('timerRec').classList.toggle('hidden', !recHtml);
@@ -1693,7 +2095,13 @@ function drawTimer(){
   fg.classList.toggle('ending',restLeft<=5);
 }
 function stopRest(){
+  if(restInt && restStartedAt){
+    // true rest = timer start -> timer end (or skip). Excludes set execution & logging delay.
+    lastRestSec = Math.max(0, Math.round((Date.now()-restStartedAt)/1000));
+    if(restLeft<=0) lastRestSec = restTotal;      // ran to completion: exactly the programmed rest
+  }
   clearInterval(restInt); restInt=null;
+  restStartedAt=0;
   $('timerOverlay').classList.add('hidden');
   $('miniTimer').classList.add('hidden');
 }
@@ -1802,8 +2210,24 @@ $('backupBtn').onclick=()=>{
   a.href=URL.createObjectURL(new Blob([JSON.stringify(DB,null,1)],{type:'application/json'}));
   a.download=`setlog-backup-${new Date().toISOString().slice(0,10)}.json`;
   a.click();
+  DB.settings.lastBackup=Date.now(); saveDB();
+  renderBackupStatus();
   toast('Backup downloaded — keep it somewhere safe');
 };
+function renderBackupStatus(){
+  const el=$('backupStatus'); if(!el) return;
+  const lb=DB.settings.lastBackup;
+  const items=(DB.routines?.length||0)+' workouts · '+(DB.sessions?.length||0)+' sessions · '+(DB.cardio?.length||0)+' cardio · '+(DB.body?.length||0)+' measurements';
+  if(!lb){
+    el.innerHTML=`<b style="color:var(--gold)">Never backed up.</b><br><span class="muted">Tap Backup to save ${items} to a file.</span>`;
+    return;
+  }
+  const days=Math.floor((Date.now()-lb)/864e5);
+  const when = days===0?'today' : days===1?'yesterday' : `${days} days ago`;
+  const stale = days>=7;
+  el.innerHTML=`<b style="color:${stale?'var(--gold)':'var(--ink)'}">Last backup: ${when}</b> <span class="muted">(${fmtDateLong(lb)})</span><br>
+    <span class="muted">${items}${stale?' — worth backing up again.':''}</span>`;
+}
 $('restoreBtn').onclick=()=>$('restoreFile').click();
 $('restoreFile').onchange=e=>{
   const f=e.target.files[0]; if(!f) return;
