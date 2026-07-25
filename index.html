@@ -945,6 +945,12 @@ const toLb  = v  => unit()==='kg' ? v/KG : v;
 const uLbl  = ()=>unit().toUpperCase();
 
 /* ---------- helpers ---------- */
+/* calendar days between two dates — Friday night → Saturday morning is 1 day, not 0 */
+function daysAgo(ts){
+  const a=new Date(ts); a.setHours(0,0,0,0);
+  const b=new Date();   b.setHours(0,0,0,0);
+  return Math.max(0, Math.round((b-a)/864e5));
+}
 const fmtClock = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
 const fmtDate = ts => new Date(ts).toLocaleDateString(undefined,{month:'numeric',day:'numeric',year:'2-digit'});
 const fmtDateLong = ts => new Date(ts).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
@@ -1946,8 +1952,8 @@ function renderRecovery(){
   const rows=Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6);
   if(!rows.length){ el.innerHTML='<div class="muted">Nothing logged yet — your trained areas will show here with days since.</div>'; return; }
   el.innerHTML=rows.map(([name,ts])=>{
-    const days=Math.floor((Date.now()-ts)/864e5);
-    const label = days===0?'today' : days===1?'1 day' : `${days} days`;
+    const days=daysAgo(ts);
+    const label = days===0?'today' : days===1?'yesterday' : `${days} days`;
     const stale = days>=7;
     const pct=Math.max(6, Math.min(100, (days/7)*100));
     return `<div class="rec-row">
@@ -1963,7 +1969,7 @@ function renderNudge(){
   const el=$('nudgeCard'); if(!el) return;
   const lb=DB.settings.lastBackup||0;
   const since=finished().filter(s=>s.start>lb).length + DB.cardio.filter(c=>c.t>lb).length;
-  const days=lb?Math.floor((Date.now()-lb)/864e5):999;
+  const days=lb?daysAgo(lb):999;
   if(since>=10 || (lb && days>=14) || (!lb && since>=5)){
     el.classList.remove('hidden');
     el.innerHTML=`<b style="color:var(--gold)">Time to back up.</b> <span class="muted">${since} session${since!==1?'s':''} logged since your last backup${lb?` (${days} days ago)`:''}. History tab → Backup.</span>`;
@@ -2366,7 +2372,7 @@ function drawChart(data){
 /* ---------- REST TIMER ---------- */
 const RING_C=2*Math.PI*111;
 $('ringFg').style.strokeDasharray=RING_C;
-let restTotal=0, restLeft=0, restInt=null, audioCtx=null, pendingSkip=false, restStartedAt=0, lastRestSec=null;
+let restTotal=0, restLeft=0, restInt=null, audioCtx=null, pendingSkip=false, restStartedAt=0, lastRestSec=null, restHideT=null;
 /* Primary sound path: HTML <audio> elements (most reliable on iOS).
    iOS requires the first play() to happen inside a user gesture, so we
    "prime" both clips silently on the first tap anywhere. */
@@ -2410,6 +2416,7 @@ function beep(freq=880,dur=0.15,when=0,vol=0.5){
   }catch(e){}
 }
 function startRest(seconds,exName,recHtml){
+  clearTimeout(restHideT);
   stopRest();
   stopPhaseAudio();
   pendingSkip=false;
@@ -2435,10 +2442,7 @@ function startRest(seconds,exName,recHtml){
       if(soundOn){ const a2=$('sndPhase2'); try{ a2.currentTime=0; a2.play(); }catch(e){} }
       if(navigator.vibrate) navigator.vibrate([60,50,60,50,60]);
     }
-    if(restLeft<=0){
-      if(navigator.vibrate) navigator.vibrate([300,100,300,100,500]);
-      stopRest(); toast('Rest over — go!');                // sndPhase2 keeps ringing to its natural end
-    }
+    if(restLeft<=0) finishRestNaturally();
   },1000);
 }
 function drawTimer(){
@@ -2448,7 +2452,23 @@ function drawTimer(){
   fg.style.strokeDashoffset=RING_C*(1-restLeft/restTotal);
   fg.classList.toggle('ending',restLeft<=5);
 }
+/* rest completed on its own: show 0:00, let the sound ring out, then close */
+function finishRestNaturally(){
+  restLeft=0;
+  drawTimer();                                   // display actually reaches 0:00
+  clearInterval(restInt); restInt=null;
+  lastRestSec=restTotal;                         // exact programmed rest
+  restStartedAt=0;
+  if(navigator.vibrate) navigator.vibrate([300,100,300,100,500]);
+  toast('Rest over — go!');
+  clearTimeout(restHideT);
+  restHideT=setTimeout(()=>{                     // audio (2nd sound) plays through
+    $('timerOverlay').classList.add('hidden');
+    $('miniTimer').classList.add('hidden');
+  }, 2200);
+}
 function stopRest(){
+  clearTimeout(restHideT);
   if(restInt && restStartedAt){
     // true rest = timer start -> timer end (or skip). Excludes set execution & logging delay.
     lastRestSec = Math.max(0, Math.round((Date.now()-restStartedAt)/1000));
@@ -2576,7 +2596,7 @@ function renderBackupStatus(){
     el.innerHTML=`<b style="color:var(--gold)">Never backed up.</b><br><span class="muted">Tap Backup to save ${items} to a file.</span>`;
     return;
   }
-  const days=Math.floor((Date.now()-lb)/864e5);
+  const days=daysAgo(lb);
   const when = days===0?'today' : days===1?'yesterday' : `${days} days ago`;
   const stale = days>=7;
   el.innerHTML=`<b style="color:${stale?'var(--gold)':'var(--ink)'}">Last backup: ${when}</b> <span class="muted">(${fmtDateLong(lb)})</span><br>
