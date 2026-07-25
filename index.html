@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>SETLOG — Workout Tracker</title>
 <meta name="theme-color" content="#10141d">
 <meta name="color-scheme" content="dark">
@@ -28,6 +28,9 @@
     --font:'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  button,.chip,.iconbtn,.set-row,.set-chip,.routine-card,nav button{touch-action:manipulation}
+  /* iOS zooms any focused input under 16px — force 16px minimum everywhere */
+  input,select,textarea{font-size:16px!important}
   html,body{height:100%}
   html{background:#10141D; color-scheme:dark}
   body{
@@ -99,10 +102,16 @@
   label{display:block; font-size:12px; color:var(--ink-dim); margin-bottom:5px; font-weight:500; letter-spacing:.03em}
   .field{flex:1; min-width:110px}
   .ex-thumb{
-    width:100%; max-height:190px; object-fit:cover; border-radius:14px;
-    border:1px solid var(--line); margin-top:10px; display:block; cursor:pointer;
+    width:100%; max-height:230px; object-fit:contain; border-radius:14px;
+    background:var(--bg2); border:1px solid var(--line); margin-top:10px; display:block; cursor:zoom-in;
   }
-  .bx-thumb{width:38px; height:38px; border-radius:10px; object-fit:cover; flex:none; border:1px solid var(--line)}
+  .bx-thumb{width:40px; height:40px; border-radius:10px; object-fit:contain; background:var(--bg2); flex:none; border:1px solid var(--line)}
+  #lightbox{
+    position:fixed; inset:0; z-index:140; background:rgba(6,8,12,.94); backdrop-filter:blur(8px);
+    display:flex; align-items:center; justify-content:center; padding:20px; cursor:zoom-out;
+  }
+  #lightbox img{max-width:100%; max-height:82vh; object-fit:contain; border-radius:14px}
+  #lightbox .cap{position:absolute; bottom:26px; left:0; right:0; text-align:center; color:var(--ink-dim); font-size:13px}
   .ic-svg{vertical-align:-2.5px}
   .btn .ic-svg{margin-right:7px; vertical-align:-3px}
   .hidden{display:none!important}
@@ -143,6 +152,19 @@
   .pr-feed div{padding:9px 0; font-size:14.5px; border-bottom:1px solid var(--line)}
   .pr-feed div:last-child{border-bottom:none}
   .pr-feed b{color:var(--gold)}
+  .rec-row{display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:14px}
+  .rec-row:last-child{border-bottom:none}
+  .rec-name{flex:1; font-weight:600}
+  .rec-days{font-variant-numeric:tabular-nums; font-weight:700}
+  .rec-bar{height:4px; border-radius:2px; background:var(--panel3); width:64px; overflow:hidden; flex:none}
+  .rec-bar i{display:block; height:100%; border-radius:2px; background:var(--grad)}
+  /* calendar heat map */
+  .heat{display:flex; gap:3px; overflow-x:auto; padding-bottom:4px}
+  .heat-col{display:flex; flex-direction:column; gap:3px}
+  .heat-cell{width:12px; height:12px; border-radius:3px; background:var(--panel2); border:1px solid var(--line)}
+  .heat-cell.l1{background:rgba(233,180,92,.28); border-color:transparent}
+  .heat-cell.l2{background:rgba(233,180,92,.55); border-color:transparent}
+  .heat-cell.l3{background:var(--gold); border-color:transparent}
   .chips{display:flex; flex-wrap:wrap; gap:8px}
   .chip{
     font-family:var(--font); font-weight:500; font-size:14px;
@@ -186,6 +208,7 @@
   }
   .ex-name .spark{font-size:12px; color:var(--gold)}
   .ex-meta{font-size:12.5px; color:var(--ink-dim); margin-top:3px}
+  .ex-cue{font-size:12.5px; color:var(--gold); margin-top:5px; line-height:1.4}
 
   .sets{margin-top:12px}
   .set-row{
@@ -232,6 +255,13 @@
     font-size:12.5px; color:var(--gold); background:var(--gold-soft);
     border:1px solid rgba(233,180,92,.2); border-radius:11px; padding:8px 11px; margin-bottom:10px; line-height:1.45;
   }
+  .rpe-row{display:flex; align-items:center; gap:6px; margin-top:10px; flex-wrap:wrap}
+  .rpe-lbl{font-size:11px; color:var(--ink-dim); letter-spacing:.08em; text-transform:uppercase; margin-right:2px}
+  .rpe-chip{
+    flex:1; min-width:38px; background:var(--panel2); border:1px solid var(--line); color:var(--ink-dim);
+    border-radius:10px; padding:7px 0; font-family:var(--font); font-weight:700; font-size:14px; cursor:pointer;
+  }
+  .rpe-chip.sel{background:var(--grad); color:#1B1408; border-color:transparent}
   .logger .go{display:flex; gap:8px; margin-top:10px}
   .logger .go .btn{flex:1}
 
@@ -318,6 +348,12 @@
       <div class="tile t3"><span class="ic"><svg class="ic-svg " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg></span><span class="num" id="dashWeekSess">0</span><span class="lbl">Sessions · 7d</span></div>
     </div>
 
+    <div class="card hidden" id="nudgeCard" style="padding:12px 16px; font-size:13.5px"></div>
+    <div class="card" id="recoveryCard" style="padding:14px 16px">
+      <div class="eyebrow">Last trained</div>
+      <div id="recoveryList"></div>
+    </div>
+
     <div class="eyebrow" style="margin:4px 2px 10px">My workouts</div>
     <div id="routineList"></div>
     <button class="btn block" id="newRoutineBtn">＋ Create workout</button>
@@ -365,6 +401,11 @@
       <button class="btn small ghost" id="restoreBtn"><svg class="ic-svg " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 8l5-5 5 5M12 3v12"/></svg>Restore</button>
       <button class="btn small ghost" id="exportBtn"><svg class="ic-svg " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>CSV</button>
       <input type="file" id="restoreFile" accept=".json,application/json" class="hidden">
+    </div>
+    <div class="card" style="padding:14px 16px">
+      <div class="eyebrow">Training calendar · 12 weeks</div>
+      <div class="heat" id="heatMap"></div>
+      <div class="muted" id="heatCaption" style="margin-top:8px; font-size:12.5px"></div>
     </div>
     <div id="backupStatus" class="card" style="padding:12px 16px; font-size:13.5px"></div>
     <div id="histList"></div>
@@ -414,13 +455,17 @@
         <div class="field"><label for="exAngle">Angle</label><input id="exAngle" placeholder="45°, Neutral…"></div>
       </div>
       <div style="margin-top:10px">
+        <label for="exCue">Setup notes / cues — optional</label>
+        <input id="exCue" placeholder="Seat height 4, elbows tucked, 2s negative…">
+      </div>
+      <div style="margin-top:10px">
         <label>Visual (photo or GIF) — optional</label>
         <div class="row">
           <button class="btn ghost small" id="exPicBtn" style="flex:1">Choose image / GIF</button>
           <button class="btn ghost small hidden" id="exPicClear">Remove</button>
           <input type="file" id="exPicFile" accept="image/*" class="hidden">
         </div>
-        <img id="exPicPreview" class="hidden" style="margin-top:8px; width:100%; max-height:170px; object-fit:cover; border-radius:12px; border:1px solid var(--line)">
+        <img id="exPicPreview" class="hidden" style="margin-top:8px; width:100%; max-height:200px; object-fit:contain; background:var(--bg2); border-radius:12px; border:1px solid var(--line)">
       </div>
       <div class="row" style="margin-top:10px">
         <div class="field" id="exBandModeField">
@@ -603,8 +648,21 @@
       <button class="btn" id="bmSaveBtn" style="flex:1">Save today's entry</button>
       <button class="btn ghost" id="bmCancel">Close</button>
     </div>
-    <div class="eyebrow" style="margin-top:20px">Weight trend</div>
+    <div style="margin-top:14px">
+      <label>Progress photo — optional</label>
+      <div class="row">
+        <button class="btn ghost small" id="bmPicBtn" style="flex:1">Add photo</button>
+        <button class="btn ghost small hidden" id="bmPicClear">Remove</button>
+        <input type="file" id="bmPicFile" accept="image/*" class="hidden">
+      </div>
+      <img id="bmPicPreview" class="hidden" style="margin-top:8px; width:100%; max-height:220px; object-fit:contain; background:var(--bg2); border-radius:12px; border:1px solid var(--line)">
+    </div>
+
+    <div class="eyebrow" style="margin-top:20px">Trend</div>
+    <select id="bmMetric" style="margin-bottom:10px"></select>
     <canvas id="bmChart" width="520" height="160"></canvas>
+
+    <div id="bmPhotoCompare"></div>
     <div class="eyebrow" style="margin-top:16px">Past entries</div>
     <div id="bmHistory" class="hist-detail" style="margin-top:0"></div>
   </div>
@@ -755,6 +813,53 @@
   </div>
 </div>
 
+<div id="lightbox" class="hidden"><img id="lightboxImg" alt=""><div class="cap">Tap anywhere to close</div></div>
+
+<!-- SESSION SUMMARY -->
+<div class="modal hidden" id="summaryModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3 id="sumTitle">Session complete</h3>
+    <div class="sub" id="sumSub"></div>
+    <div class="dash" style="margin-bottom:14px">
+      <div class="tile t2"><span class="num" id="sumSets">0</span><span class="lbl">Sets</span></div>
+      <div class="tile t1"><span class="num" id="sumVol">0</span><span class="lbl">Volume lb</span></div>
+      <div class="tile t3"><span class="num" id="sumTime">0:00</span><span class="lbl">Duration</span></div>
+    </div>
+    <div id="sumCompare" class="hist-detail" style="margin-top:0"></div>
+    <div id="sumPRs" class="hist-detail"></div>
+    <button class="btn block" id="sumClose" style="margin-top:16px">Done</button>
+  </div>
+</div>
+
+<!-- SETTINGS SHEET -->
+<div class="modal hidden" id="setModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>Settings</h3>
+    <div class="sub">Your bodyweight feeds volume math for pullups and dips. Plates make weight suggestions match what you can actually load.</div>
+    <div class="row">
+      <div class="field"><label for="stBw">My bodyweight (lb)</label><input id="stBw" type="number" min="0" step="0.5" inputmode="decimal" placeholder="e.g. 182"></div>
+      <div class="field"><label for="stBar">Barbell weight (lb)</label><input id="stBar" type="number" min="0" step="0.5" inputmode="decimal" placeholder="45"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="field"><label for="stHandle">Dumbbell handle weight (lb)</label><input id="stHandle" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0 if fixed dumbbells"></div>
+    </div>
+    <div style="margin-top:14px">
+      <label>Plates I own (per side)</label>
+      <div class="chips" id="plateChips"></div>
+      <div class="row" style="margin-top:8px">
+        <input id="stPlateNew" type="number" step="0.25" min="0" inputmode="decimal" placeholder="Add a plate size" style="flex:1">
+        <button class="btn ghost small" id="stPlateAdd">Add</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn" id="stSave" style="flex:1">Save settings</button>
+      <button class="btn ghost" id="stCancel">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- TIMER -->
 <div id="timerOverlay" class="hidden" role="dialog" aria-label="Rest timer">
   <div class="lbl">REST</div>
@@ -814,6 +919,9 @@ async function loadDB(){
   DB.cardio = DB.cardio || [];
   DB.body = DB.body || [];
   DB.settings = DB.settings || {unit:'lb'};
+  if(!DB.settings.plates) DB.settings.plates=[1.25,2.5,5,10,25];
+  if(DB.settings.barWeight==null) DB.settings.barWeight=45;
+  if(DB.settings.dbHandle==null) DB.settings.dbHandle=0;
   if(DB.activeSession) active = DB.activeSession;
 }
 let saveT=null;
@@ -939,7 +1047,7 @@ function show(view){
     $('view-'+v).classList.toggle('hidden', v!==view);
     $('tab-'+v).classList.toggle('active', v===view);
   });
-  if(view==='history'){ renderHistory(); renderBackupStatus(); }
+  if(view==='history'){ renderHistory(); renderBackupStatus(); renderHeat(); }
   if(view==='home') renderHome();
 }
 $('tab-home').onclick=()=>show('home');
@@ -1006,6 +1114,7 @@ function renderHome(){
     list.appendChild(card);
   });
 
+  renderRecovery(); renderNudge();
   // PR feed
   const prs=[];
   finished().forEach(s=>s.exercises.forEach(e=>e.sets.forEach(st=>{ if(st.pr) prs.push({t:st.t||s.start,name:e.name,st}); })));
@@ -1088,6 +1197,7 @@ function startBxEdit(i){
   $('exStartWeight').value=e.startWeight||'';
   $('exTargetReps').value=e.targetReps||'';
   $('exRest').value=e.rest||90;
+  $('exCue').value=e.cue||'';
   setExPic(e.pic||null);
   $('addBxBtn').textContent='Update exercise';
   $('exName').focus();
@@ -1108,12 +1218,13 @@ $('addBxBtn').onclick=()=>{
     startWeight: toLb(parseFloat($('exStartWeight').value)||0),
     targetReps: parseInt($('exTargetReps').value)||10,
     rest: parseInt($('exRest').value)||90,
+    cue: $('exCue').value.trim(),
     pic: exPicData||null
   };
   if(editingBx!=null){ builder.exercises[editingBx]=def; toast('Exercise updated'); cancelBxEdit(); }
   else builder.exercises.push(def);
   setExPic(null);
-  ['exName','exVariant','exAngle','exStartWeight','exTargetReps'].forEach(id=>$(id).value='');
+  ['exName','exVariant','exAngle','exStartWeight','exTargetReps','exCue'].forEach(id=>$(id).value='');
   $('exBandMode').value='none'; $('exType').value='bodyweight'; $('exType').dispatchEvent(new Event('change'));
   $('bandStrengthField').classList.add('hidden');
   renderBxList();
@@ -1178,24 +1289,38 @@ function e1rmSet(w,r){
   return (ep+br)/2;
 }
 function repRangeRec(ex,set){
+  const rir = set.rpe ? (10-set.rpe) : null;      // reps in reserve
   if(!set.weight || set.weight<=0){
-    if(set.reps>REP_HIGH) return {w:2.5, note:`${set.reps} reps — above ${REP_LOW}–${REP_HIGH}. Add load (start ~2.5 lb) or band resistance to get back in the growth zone.`};
+    if(set.reps>REP_HIGH) return {w:plateStep(ex.type), note:`${set.reps} reps — above ${REP_LOW}–${REP_HIGH}. Add load (start ${plateStep(ex.type)} lb) or band resistance.`};
     return null;
   }
   const oneRM=e1rmSet(set.weight,set.reps);
-  if(set.reps>=REP_LOW && set.reps<=REP_HIGH){
-    return {w:set.weight, note:`${set.reps} reps at ${Math.round(set.weight/oneRM*100)}% of your ~${Math.round(oneRM)} lb est. 1RM — in the ${REP_LOW}–${REP_HIGH} zone. Hold ${set.weight} lb.`};
-  }
-  // fatigue: each completed set costs ~2% (capped 8%)
   const fatigue=Math.min(0.08, 0.02*Math.max(0,ex.sets.length-1));
-  let target=r025( oneRM/(1+REP_TARGET/30) * (1-fatigue) );
-  // clamp swing to ±12% per set, and force at least one 0.25 step in the right direction
-  target=Math.min(r025(set.weight*1.12), Math.max(r025(set.weight*0.88), target));
-  if(set.reps>REP_HIGH && target<=set.weight) target=set.weight+0.25;
-  if(set.reps<REP_LOW && target>=set.weight) target=Math.max(0.25,set.weight-0.25);
+  const loadTip=w=>{ const ps=perSide(w,ex.type); return ps?` · per side: ${ps}`:''; };
+
+  // in range — RPE decides whether to hold or nudge up
+  if(set.reps>=REP_LOW && set.reps<=REP_HIGH){
+    if(rir!=null && rir>=3){
+      let t=snapWeight(set.weight+plateStep(ex.type), ex.type);
+      return {w:t, note:`${set.reps} reps at RPE ${set.rpe} (~${rir} left in the tank) — in range but easy. Go up to ${t} lb.${loadTip(t)}`};
+    }
+    const pct=Math.round(set.weight/oneRM*100);
+    const rpeTxt = rir!=null ? ` at RPE ${set.rpe}` : '';
+    return {w:set.weight, note:`${set.reps} reps${rpeTxt} — ${pct}% of your ~${Math.round(oneRM)} lb est. 1RM, right in the ${REP_LOW}–${REP_HIGH} zone. Hold ${set.weight} lb.${loadTip(set.weight)}`};
+  }
+
+  let target = oneRM/(1+REP_TARGET/30) * (1-fatigue);
+  // RPE 10 with low reps means a harder cut than the formula alone suggests
+  if(set.reps<REP_LOW && set.rpe===10) target*=0.96;
+  target=Math.min(set.weight*1.12, Math.max(set.weight*0.88, target));
+  target=snapWeight(target, ex.type);
+  const step=plateStep(ex.type);
+  if(set.reps>REP_HIGH && target<=set.weight) target=snapWeight(set.weight+step, ex.type);
+  if(set.reps<REP_LOW && target>=set.weight) target=Math.max(loadBase(ex.type), snapWeight(set.weight-step, ex.type));
   const pct=Math.round(target/oneRM*100);
   const dir=set.reps>REP_HIGH?'too light':'too heavy';
-  return {w:target, note:`${set.reps} reps — ${dir} for ${REP_LOW}–${REP_HIGH}. Est. 1RM ~${Math.round(oneRM)} lb → next set ${target} lb (~${pct}% 1RM, fatigue-adjusted).`};
+  const rpeTxt = rir!=null ? ` (RPE ${set.rpe})` : '';
+  return {w:target, note:`${set.reps} reps${rpeTxt} — ${dir} for ${REP_LOW}–${REP_HIGH}. Est. 1RM ~${Math.round(oneRM)} lb → next set ${target} lb (~${pct}% 1RM, fatigue-adjusted).${loadTip(target)}`};
 }
 
 /* ---------- progressive overload suggestion ----------
@@ -1244,7 +1369,7 @@ function renderSession(){
       const h=setHistory(ex.name,si).map(x=>`<div><b>${fmtDate(x.date)}</b> ${x.reps}×${dispW(x.weight)||'BW'}</div>`).join('');
       return `<div class="set-row done" data-edit="${si}" title="Tap to edit">
         <span class="n">${si+1}</span>
-        <span class="main">${s.reps} × ${dispW(s.weight)||'BW'}<small> ${s.weight?uLbl():''}${s.restSkipped?` · rest skipped`:(s.restTaken?` · rested ${fmtClock(s.restTaken)}`:'')}</small> ${s.pr?'<span class="pr">★ PR</span>':''} <span style="color:var(--ink-ghost)">${'<svg class="ic-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>'}</span></span>
+        <span class="main">${s.reps} × ${dispW(s.weight)||'BW'}<small> ${s.weight?uLbl():''}${s.rpe?` · RPE ${s.rpe}`:''}${s.restSkipped?` · rest skipped`:(s.restTaken?` · rested ${fmtClock(s.restTaken)}`:'')}</small> ${s.pr?'<span class="pr">★ PR</span>':''} <span style="color:var(--ink-ghost)">${'<svg class="ic-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>'}</span></span>
         <span class="hist">${h}</span>
       </div>`;
     }).join('');
@@ -1261,6 +1386,7 @@ function renderSession(){
         <div>
           <div class="ex-name" data-prog="${xi}">${ex.name} <span class="spark"><svg class="ic-svg " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 7 13.5 15.5 8.5 10.5 2 17M16 7h6v6"/></svg></span></div>
           <div class="ex-meta">${ex.type} · ${exLabel(ex)}</div>
+          ${ex.cue?`<div class="ex-cue">${ex.cue}</div>`:''}
         </div>
         <div><button class="iconbtn" data-del="${xi}" aria-label="Skip exercise today"><svg class="ic-svg " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
       </div>
@@ -1273,7 +1399,7 @@ function renderSession(){
             <div class="plabel">Reps</div>
             <div class="stepper">
               <button data-st="reps" data-d="-1" data-x="${xi}">−</button>
-              <input class="val" inputmode="numeric" id="reps-${xi}" value="${L.reps}">
+              <input class="val" type="text" inputmode="numeric" pattern="[0-9]*" id="reps-${xi}" value="${L.reps}">
               <button data-st="reps" data-d="1" data-x="${xi}">＋</button>
             </div>
           </div>
@@ -1281,12 +1407,16 @@ function renderSession(){
             <div class="plabel">${(ex.type==='bodyweight'||ex.type==='band')?`Added ${uLbl()}`:`Weight (${uLbl()})`}</div>
             <div class="stepper">
               <button data-st="weight" data-d="-1" data-x="${xi}">−</button>
-              <input class="val" inputmode="decimal" id="wt-${xi}" value="${dispW(L.weight)}">
+              <input class="val" type="text" inputmode="decimal" id="wt-${xi}" value="${dispW(L.weight)}">
               <button data-st="weight" data-d="1" data-x="${xi}">＋</button>
             </div>
           </div>
         </div>
         ${suggestHtml(ex,xi)}
+        <div class="rpe-row">
+          <span class="rpe-lbl">How hard?</span>
+          ${[6,7,8,9,10].map(v=>`<button class="rpe-chip${loggerState[xi]&&loggerState[xi].rpe===v?' sel':''}" data-rpe="${xi}" data-v="${v}">${v}</button>`).join('')}
+        </div>
         <div class="go">
           <button class="btn" data-log="${xi}">Log set ▸ rest</button>
           ${ex.sets.length?`<button class="btn ghost" data-rep="${xi}">Repeat</button>`:''}
@@ -1296,6 +1426,8 @@ function renderSession(){
 
     card.querySelectorAll('[data-edit]').forEach(r=>r.onclick=()=>editSet(xi,+r.dataset.edit));
     card.querySelector('[data-prog]').onclick=()=>openProgress(ex.name);
+    const thumb=card.querySelector('.ex-thumb');
+    if(thumb) thumb.onclick=()=>{ $('lightboxImg').src=ex.pic; $('lightbox').classList.remove('hidden'); };
     card.querySelector('[data-del]').onclick=async ()=>{
       if(!await appConfirm(`Remove ${ex.name} from today's session?`,'Remove')) return;
       active.exercises.splice(xi,1);
@@ -1316,6 +1448,12 @@ function renderSession(){
     syncLogger(xi);
     toast('Weight bumped — go get it');
   });
+  list.querySelectorAll('[data-rpe]').forEach(b=>b.onclick=()=>{
+    const xi=+b.dataset.rpe, v=+b.dataset.v;
+    syncLogger(xi);
+    loggerState[xi].rpe = (loggerState[xi].rpe===v ? null : v);
+    renderSession();
+  });
   list.querySelectorAll('[data-log]').forEach(b=>b.onclick=()=>logSet(+b.dataset.log,false));
   list.querySelectorAll('[data-rep]').forEach(b=>b.onclick=()=>logSet(+b.dataset.rep,true));
   updateStats(); startElapsed();
@@ -1334,9 +1472,11 @@ function step(xi,fieldName,dir){
   syncLogger(xi);
 }
 function syncLogger(xi){
+  const prev=loggerState[xi]||{};
   loggerState[xi]={
     reps:parseInt($('reps-'+xi).value)||0,
-    weight:toLb(parseFloat($('wt-'+xi).value)||0)
+    weight:toLb(parseFloat($('wt-'+xi).value)||0),
+    rpe:prev.rpe??null
   };
 }
 function logSet(xi,repeat){
@@ -1346,6 +1486,7 @@ function logSet(xi,repeat){
   else{ syncLogger(xi); reps=loggerState[xi].reps; weight=loggerState[xi].weight; }
   if(!reps) return toast('Enter reps first');
   const set={reps,weight,t:Date.now()};
+  if(loggerState[xi] && loggerState[xi].rpe) set.rpe=loggerState[xi].rpe;
   // actual rest since the previous set was logged
   const prevSet=ex.sets[ex.sets.length-1];
   if(prevSet){
@@ -1362,7 +1503,7 @@ function logSet(xi,repeat){
   ex.sets.push(set);
   // 6–8 rep-range coach: set next-set weight from what just happened
   const rec=repRangeRec(ex,set);
-  if(rec){ loggerState[xi]={reps:Math.min(8,Math.max(6,reps)), weight:rec.w}; ex.recNote=rec.note; }
+  if(rec){ loggerState[xi]={reps:Math.min(8,Math.max(6,reps)), weight:rec.w, rpe:null}; ex.recNote=rec.note; }
   else{
     ex.recNote='';
     const nxt=setHistory(ex.name,ex.sets.length,1)[0];
@@ -1508,6 +1649,41 @@ $('saveCardioBtn').onclick=()=>{
 };
 
 
+
+let bmPicData=null;
+$('bmPicBtn').onclick=()=>$('bmPicFile').click();
+$('bmPicFile').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  resizeImage(f, 800, data=>{
+    bmPicData=data;
+    $('bmPicPreview').src=data;
+    $('bmPicPreview').classList.remove('hidden');
+    $('bmPicClear').classList.remove('hidden');
+    toast('Photo attached');
+  });
+  e.target.value='';
+};
+$('bmPicClear').onclick=()=>{ bmPicData=null; $('bmPicPreview').classList.add('hidden'); $('bmPicClear').classList.add('hidden'); };
+function renderPhotoCompare(){
+  const el=$('bmPhotoCompare'); if(!el) return;
+  const withPics=DB.body.filter(e=>e.pic);
+  if(withPics.length<2){ el.innerHTML=''; return; }
+  const first=withPics[0], last=withPics[withPics.length-1];
+  el.innerHTML=`<div class="eyebrow" style="margin-top:20px">Then vs now</div>
+    <div style="display:flex; gap:10px">
+      <div style="flex:1; text-align:center">
+        <img src="${first.pic}" style="width:100%; border-radius:12px; border:1px solid var(--line)">
+        <div class="muted" style="font-size:12px; margin-top:5px">${fmtDate(first.t)}${first.weight?` · ${first.weight} lb`:''}</div>
+      </div>
+      <div style="flex:1; text-align:center">
+        <img src="${last.pic}" style="width:100%; border-radius:12px; border:1px solid var(--line)">
+        <div class="muted" style="font-size:12px; margin-top:5px">${fmtDate(last.t)}${last.weight?` · ${last.weight} lb`:''}</div>
+      </div>
+    </div>`;
+}
+
+/* ---------- progress photos ---------- */
+
 /* ---------- BODY MEASUREMENTS ---------- */
 const BM_FIELDS = [
   ['weight','Weight','lb'],
@@ -1519,6 +1695,13 @@ const BM_FIELDS = [
   ['calfL','Left calf','in'],      ['calfR','Right calf','in'],
 ];
 function lastBody(){ return DB.body.length ? DB.body[DB.body.length-1] : null; }
+function fillMetricPicker(){
+  const sel=$('bmMetric'); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML=BM_FIELDS.map(([k,label,unit])=>`<option value="${k}">${label} (${unit})</option>`).join('');
+  sel.value=cur||'weight';
+  sel.onchange=()=>drawBmChart(sel.value);
+}
 function openBody(){
   $('bmDate').textContent = 'Date auto-filled: ' + new Date().toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric', year:'numeric'})
     + (lastBody() ? ' · previous values shown in gray' : '');
@@ -1529,8 +1712,11 @@ function openBody(){
       <input id="bm-${k}" type="number" step="0.1" min="0" inputmode="decimal"
         placeholder="${prev && prev[k]!=null ? prev[k] : ''}">
     </div>`).join('') + '</div>';
+  bmPicData=null; $('bmPicPreview').classList.add('hidden'); $('bmPicClear').classList.add('hidden');
+  fillMetricPicker();
   renderBmHistory();
-  drawBmChart();
+  drawBmChart($('bmMetric').value||'weight');
+  renderPhotoCompare();
   $('bodyModal').classList.remove('hidden');
 }
 $('bodyBtn').onclick=openBody;
@@ -1543,10 +1729,12 @@ $('bmSaveBtn').onclick=()=>{
     if(!isNaN(v)){ entry[k]=v; any=true; }
   });
   if(!any) return toast('Enter at least one measurement');
+  if(bmPicData) entry.pic=bmPicData;
   DB.body.push(entry);
   if(entry.weight){ DB.settings.bw=entry.weight; }   // keep volume calc in sync
   saveDB();
   toast('Measurements saved'+(entry.weight?' — bodyweight updated for volume stats':''));
+  bmPicData=null;
   openBody();  // re-render with new entry as "previous"
 };
 function bmDelta(cur,prev,k){
@@ -1565,6 +1753,7 @@ function renderBmHistory(){
     const parts=BM_FIELDS.filter(([k])=>e[k]!=null)
       .map(([k,label,unit])=>`${label}: <b>${e[k]}</b>${bmDelta(e,prev,k)}`);
     return `<div style="padding:8px 0; border-bottom:1px solid var(--line)">
+      ${e.pic?`<img src="${e.pic}" style="width:44px;height:44px;object-fit:cover;border-radius:9px;float:left;margin-right:10px;border:1px solid var(--line)">`:''}
       <b>${fmtDateLong(e.t)}</b> — ${parts.join(' · ')}
       <button class="iconbtn" data-bmdel="${DB.body.indexOf(e)}" style="width:26px;height:26px;float:right"><svg class="ic-svg " width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>`;
@@ -1575,15 +1764,16 @@ function renderBmHistory(){
     }
   });
 }
-function drawBmChart(){
+function drawBmChart(metric){
+  metric=metric||'weight';
   const c=$('bmChart');
   const ctx=c&&c.getContext&&c.getContext('2d');
   if(!ctx) return;
   const W=c.width,H=c.height;
   ctx.clearRect(0,0,W,H);
-  const pts=DB.body.filter(e=>e.weight!=null);
-  if(pts.length<2){ ctx.fillStyle='#8B93A5'; ctx.font='13px Outfit, sans-serif'; ctx.fillText(pts.length?'One more weigh-in and your trend appears.':'Log weight to see your trend.',18,H/2); return; }
-  const vals=pts.map(p=>p.weight);
+  const pts=DB.body.filter(e=>e[metric]!=null);
+  if(pts.length<2){ ctx.fillStyle='#8B93A5'; ctx.font='13px Outfit, sans-serif'; ctx.fillText(pts.length?'One more entry and this trend appears.':'Log this measurement to see its trend.',18,H/2); return; }
+  const vals=pts.map(p=>p[metric]);
   const mx=Math.max(...vals), mn=Math.min(...vals);
   const pad=30;
   const xs=i=>pad+(W-2*pad)*i/(pts.length-1);
@@ -1594,7 +1784,8 @@ function drawBmChart(){
   ctx.fillStyle='#E9B45C';
   vals.forEach((v,i)=>{ctx.beginPath();ctx.arc(xs(i),ys(v),3.5,0,7);ctx.fill();});
   ctx.fillStyle='#8B93A5'; ctx.font='11px Outfit, sans-serif';
-  ctx.fillText(mx+' lb',4,pad+3); ctx.fillText(mn+' lb',4,H-pad+3);
+  const u=(BM_FIELDS.find(f=>f[0]===metric)||[])[2]||'';
+  ctx.fillText(mx+' '+u,4,pad+3); ctx.fillText(mn+' '+u,4,H-pad+3);
   ctx.fillText(fmtDate(pts[0].t),pad,H-6);
   ctx.textAlign='right'; ctx.fillText(fmtDate(pts[pts.length-1].t),W-6,H-6); ctx.textAlign='left';
 }
@@ -1711,6 +1902,163 @@ function renderRopeLog(){
     +`<div style="margin-top:6px"><b>Total: ${fmtClock(total)}</b></div>`;
 }
 
+$('lightbox').onclick=()=>$('lightbox').classList.add('hidden');
+
+
+
+
+/* ---------- session summary ---------- */
+function showSummary(s){
+  const sets=s.exercises.reduce((n,e)=>n+e.sets.length,0);
+  const vol=sessVol(s);
+  const dur=fmtClock((s.end-s.start)/1000);
+  $('sumTitle').textContent=`${s.group} complete`;
+  $('sumSub').textContent=fmtDateLong(s.start);
+  $('sumSets').textContent=sets;
+  $('sumVol').textContent=Math.round(vol).toLocaleString();
+  $('sumTime').textContent=dur;
+  // compare with previous session of the same workout
+  const prev=finished().filter(p=>p!==s && p.group===s.group).sort((a,b)=>b.start-a.start)[0];
+  if(prev){
+    const pv=sessVol(prev), d=vol-pv, pct=pv?Math.round(d/pv*100):0;
+    const up=d>=0;
+    $('sumCompare').innerHTML=`<div style="padding:8px 0"><b>vs last ${s.group}</b> (${fmtDateLong(prev.start)}): ${Math.round(pv).toLocaleString()} lb →
+      <b style="color:${up?'var(--green)':'var(--red)'}">${up?'↑':'↓'} ${Math.abs(pct)}%</b></div>`;
+  } else $('sumCompare').innerHTML='<div style="padding:8px 0" class="muted">First time logging this workout — it becomes your baseline.</div>';
+  const prs=[];
+  s.exercises.forEach(e=>e.sets.forEach(x=>{ if(x.pr) prs.push(`${e.name}: ${x.reps} × ${dispW(x.weight)||'BW'}${x.weight?' lb':''}`); }));
+  $('sumPRs').innerHTML = prs.length
+    ? `<div style="padding:8px 0"><b style="color:var(--gold)">★ ${prs.length} personal record${prs.length!==1?'s':''}</b><br>${prs.join('<br>')}</div>`
+    : '';
+  $('summaryModal').classList.remove('hidden');
+}
+$('sumClose').onclick=()=>{ $('summaryModal').classList.add('hidden'); show('history'); };
+
+/* ---------- last trained (recovery awareness) ---------- */
+function renderRecovery(){
+  const el=$('recoveryList'); if(!el) return;
+  const map={};
+  finished().forEach(s=>{
+    const key = s.lagging ? `${s.lagging.part} (${s.lagging.side})` : s.group;
+    if(!map[key] || s.start>map[key]) map[key]=s.start;
+  });
+  DB.cardio.forEach(c=>{ if(!map[c.activity] || c.t>map[c.activity]) map[c.activity]=c.t; });
+  const rows=Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(!rows.length){ el.innerHTML='<div class="muted">Nothing logged yet — your trained areas will show here with days since.</div>'; return; }
+  el.innerHTML=rows.map(([name,ts])=>{
+    const days=Math.floor((Date.now()-ts)/864e5);
+    const label = days===0?'today' : days===1?'1 day' : `${days} days`;
+    const stale = days>=7;
+    const pct=Math.max(6, Math.min(100, (days/7)*100));
+    return `<div class="rec-row">
+      <span class="rec-name">${name}</span>
+      <span class="rec-bar"><i style="width:${pct}%"></i></span>
+      <span class="rec-days" style="color:${stale?'var(--gold)':'var(--ink-dim)'}">${label}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- backup nudge ---------- */
+function renderNudge(){
+  const el=$('nudgeCard'); if(!el) return;
+  const lb=DB.settings.lastBackup||0;
+  const since=finished().filter(s=>s.start>lb).length + DB.cardio.filter(c=>c.t>lb).length;
+  const days=lb?Math.floor((Date.now()-lb)/864e5):999;
+  if(since>=10 || (lb && days>=14) || (!lb && since>=5)){
+    el.classList.remove('hidden');
+    el.innerHTML=`<b style="color:var(--gold)">Time to back up.</b> <span class="muted">${since} session${since!==1?'s':''} logged since your last backup${lb?` (${days} days ago)`:''}. History tab → Backup.</span>`;
+  } else el.classList.add('hidden');
+}
+
+/* ---------- calendar heat map (12 weeks) ---------- */
+function renderHeat(){
+  const el=$('heatMap'); if(!el) return;
+  const days={};
+  const key=ts=>{ const d=new Date(ts); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
+  finished().forEach(s=>{ days[key(s.start)]=(days[key(s.start)]||0)+s.exercises.reduce((n,e)=>n+e.sets.length,0); });
+  DB.cardio.forEach(c=>{ days[key(c.t)]=(days[key(c.t)]||0)+3; });
+  const today=new Date(); today.setHours(0,0,0,0);
+  const start=new Date(today); start.setDate(start.getDate()-83-today.getDay());
+  let html='';
+  for(let w=0; w<12; w++){
+    html+='<div class="heat-col">';
+    for(let d=0; d<7; d++){
+      const cur=new Date(start); cur.setDate(start.getDate()+w*7+d);
+      const v=days[`${cur.getFullYear()}-${cur.getMonth()}-${cur.getDate()}`]||0;
+      const lvl = v===0?'':(v<=6?'l1':(v<=14?'l2':'l3'));
+      const future = cur>today;
+      html+=`<div class="heat-cell ${lvl}" title="${cur.toLocaleDateString()}${v?` — ${v} sets`:''}" style="${future?'opacity:.25':''}"></div>`;
+    }
+    html+='</div>';
+  }
+  el.innerHTML=html;
+  const trained=Object.keys(days).length;
+  $('heatCaption').textContent=`${trained} training day${trained!==1?'s':''} in the last 12 weeks`;
+}
+
+/* ---------- settings: bodyweight, bar, plates ---------- */
+const DEFAULT_PLATES=[1.25,2.5,5,10,25];
+function plates(){ const p=DB.settings.plates; return (p&&p.length)?p.slice().sort((a,b)=>a-b):DEFAULT_PLATES.slice(); }
+function openSettings(){
+  $('stBw').value=DB.settings.bw||'';
+  $('stBar').value=DB.settings.barWeight??45;
+  $('stHandle').value=DB.settings.dbHandle??0;
+  renderPlateChips();
+  $('setModal').classList.remove('hidden');
+}
+function renderPlateChips(){
+  const w=$('plateChips'); w.innerHTML='';
+  plates().forEach(p=>{
+    const b=document.createElement('button');
+    b.className='chip sel'; b.textContent=`${p} lb ✕`;
+    b.onclick=()=>{ DB.settings.plates=plates().filter(x=>x!==p); renderPlateChips(); };
+    w.appendChild(b);
+  });
+  if(!plates().length) w.innerHTML='<span class="muted">No plates listed — suggestions will use 0.25 lb steps.</span>';
+}
+$('stPlateAdd').onclick=()=>{
+  const v=parseFloat($('stPlateNew').value);
+  if(!v||v<=0) return toast('Enter a plate size');
+  const list=plates(); if(!list.includes(v)) list.push(v);
+  DB.settings.plates=list; $('stPlateNew').value=''; renderPlateChips();
+};
+$('stSave').onclick=()=>{
+  DB.settings.bw=parseFloat($('stBw').value)||null;
+  DB.settings.barWeight=parseFloat($('stBar').value)||45;
+  DB.settings.dbHandle=parseFloat($('stHandle').value)||0;
+  if(!DB.settings.plates) DB.settings.plates=DEFAULT_PLATES.slice();
+  saveDB(); $('setModal').classList.add('hidden');
+  toast('Settings saved'); renderHome(); if(active) renderSession();
+};
+$('stCancel').onclick=()=>$('setModal').classList.add('hidden');
+$('bwBtn').onclick=openSettings;
+
+/* loadable-weight snapping: only suggest weights you can actually build */
+function loadBase(type){
+  if(type==='barbell') return DB.settings.barWeight??45;
+  if(type==='dumbbell') return DB.settings.dbHandle??0;
+  return 0;
+}
+function plateStep(type){
+  const p=plates();
+  if(!p.length) return 0.25;
+  return (type==='barbell'||type==='dumbbell') ? p[0]*2 : p[0];   // a plate goes on each side
+}
+function snapWeight(w,type){
+  const base=loadBase(type), step=plateStep(type);
+  if(w<=base) return base;
+  return Math.round(((w-base)/step))*step+base;
+}
+/* what to hang on each side, greedily, from plates you own */
+function perSide(total,type){
+  const base=loadBase(type);
+  let side=(total-base)/2;
+  if(side<=0.01) return '';
+  const out=[];
+  plates().slice().sort((a,b)=>b-a).forEach(p=>{ while(side>=p-0.001){ out.push(p); side-=p; } });
+  return out.length?out.join(' + '):'';
+}
+
 /* ---------- exercise images / GIFs ---------- */
 let exPicData=null;
 function resizeImage(file, maxDim, cb){
@@ -1737,7 +2085,7 @@ $('exPicBtn').onclick=()=>$('exPicFile').click();
 $('exPicFile').onchange=e=>{
   const f=e.target.files[0]; if(!f) return;
   if(f.size>6*1024*1024) return toast('That file is very large — try one under 6 MB');
-  resizeImage(f, 700, data=>{
+  resizeImage(f, 900, data=>{
     exPicData=data;
     $('exPicPreview').src=data;
     $('exPicPreview').classList.remove('hidden');
@@ -1942,9 +2290,15 @@ $('finishBtn').onclick=async ()=>{
   if(!active) return;
   const logged=active.exercises.filter(e=>e.sets.length);
   if(!logged.length && !await appConfirm('No sets logged. Discard this session?','Discard')) return;
-  if(logged.length){ active.end=Date.now(); active.exercises.forEach(e=>delete e.recNote); DB.sessions.push(active); toast('Session saved'); }
-  active=null; loggerState={}; saveDB(); stopRest();
-  show('history');
+  let done=null;
+  if(logged.length){
+    active.end=Date.now();
+    active.exercises.forEach(e=>delete e.recNote);
+    done=active;
+    DB.sessions.push(active);
+  }
+  active=null; loggerState={}; saveDB(); stopRest(); stopPhaseAudio();
+  if(done) showSummary(done); else show('history');
 };
 
 /* ---------- progress chart ---------- */
