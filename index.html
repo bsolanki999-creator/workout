@@ -54,10 +54,10 @@
     background:rgba(23,28,40,.9); backdrop-filter:blur(20px) saturate(140%);
     border:1px solid var(--line);
     border-radius:999px; box-shadow:0 10px 40px rgba(0,0,0,.5);
-    display:flex; gap:4px; padding:6px; width:calc(100% - 52px); max-width:390px;
+    display:flex; gap:2px; padding:5px; width:calc(100% - 24px); max-width:470px;
   }
   nav button{
-    flex:1; background:none; border:none; border-radius:999px;
+    flex:1; min-width:0; background:none; border:none; border-radius:999px;
     color:var(--ink-dim); font-family:var(--font); font-weight:500; font-size:14.5px; letter-spacing:.03em;
     padding:11px 0; cursor:pointer; transition:color .15s;
   }
@@ -174,6 +174,90 @@
     font-size:clamp(64px,22vw,132px); line-height:1;
   }
   .rope-foot{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+  /* stats cards */
+  .stat-card{padding:16px; cursor:pointer}
+  .stat-top{display:flex; align-items:flex-start; gap:12px}
+  .stat-pic{width:46px; height:46px; border-radius:12px; object-fit:contain; background:var(--bg2); border:1px solid var(--line); flex:none}
+  .stat-id{flex:1; min-width:0}
+  .stat-name{font-family:var(--serif); font-weight:600; font-size:18px; line-height:1.25}
+  .stat-when{font-size:12px; color:var(--ink-dim); margin-top:3px}
+  .stat-delta{
+    font-weight:800; font-size:15px; font-variant-numeric:tabular-nums; text-align:right; flex:none;
+    display:flex; flex-direction:column; align-items:flex-end; gap:1px;
+  }
+  .stat-delta small{font-size:10px; font-weight:600; color:var(--ink-dim); letter-spacing:.06em; text-transform:uppercase}
+  .stat-metrics{display:flex; gap:0; margin-top:12px; border-top:1px solid var(--line); padding-top:11px}
+  .stat-metrics>div{flex:1; text-align:center; min-width:0}
+  .stat-metrics>div+div{border-left:1px solid var(--line)}
+  .stat-metrics .v{font-family:var(--serif); font-weight:600; font-size:16px; font-variant-numeric:tabular-nums; display:block}
+  .stat-metrics .k{font-size:9.5px; color:var(--ink-dim); font-weight:600; letter-spacing:.05em; text-transform:uppercase; margin-top:2px}
+  .spark-wrap{margin-top:12px; height:44px; position:relative}
+  .spark-wrap svg{width:100%; height:44px; display:block; overflow:visible}
+  .stat-flags{display:flex; gap:6px; flex-wrap:wrap; margin-top:10px}
+  .flag{font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:4px 9px; border-radius:999px}
+  .flag.up{background:rgba(123,201,143,.14); color:var(--green)}
+  .flag.dn{background:rgba(232,117,107,.14); color:var(--red)}
+  .flag.warn{background:var(--gold-soft); color:var(--gold)}
+  .flag.pr{background:var(--gold-soft); color:var(--gold)}
+  /* advisor */
+  .prep-station{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:10px;
+  }
+  .prep-head{display:flex; align-items:baseline; gap:8px}
+  .prep-name{flex:1; min-width:0; font-family:var(--serif); font-weight:600; font-size:16.5px}
+  .prep-target{font-family:var(--serif); font-weight:600; font-size:17px; color:var(--gold); font-variant-numeric:tabular-nums}
+  .prep-plates{display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; align-items:center}
+  .plate-pill{
+    background:var(--gold-soft); border:1px solid rgba(233,180,92,.28); color:var(--gold);
+    border-radius:999px; padding:5px 11px; font-weight:700; font-size:13px; font-variant-numeric:tabular-nums;
+  }
+  .plate-pill.dim{background:var(--panel2); border-color:var(--line); color:var(--ink-dim)}
+  .prep-note{font-size:12.5px; color:var(--ink-dim); margin-top:8px; line-height:1.5}
+  .prep-note b{color:var(--ink)}
+  .prep-total{
+    background:var(--panel2); border:1px solid var(--line); border-radius:16px; padding:14px; margin-top:6px;
+  }
+  .prep-total-row{display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:14px}
+  .prep-total-row:last-child{border-bottom:none}
+  .prep-total-row .sz{font-family:var(--serif); font-weight:600; font-size:16px; width:64px; flex:none}
+  .prep-total-row .ct{flex:1; color:var(--ink-dim); font-size:13px}
+  .prep-warn{color:var(--red); font-weight:600; font-size:12px}
+  .apply-item{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:10px;
+  }
+  .apply-item.done{border-color:rgba(123,201,143,.4)}
+  .apply-top{display:flex; align-items:center; gap:10px}
+  .apply-name{flex:1; min-width:0; font-family:var(--serif); font-weight:600; font-size:16.5px}
+  .apply-rx{
+    font-family:var(--serif); font-weight:600; font-size:22px; font-variant-numeric:tabular-nums;
+    margin:8px 0 2px;
+  }
+  .apply-rx small{font-family:var(--font); font-size:11px; font-weight:600; color:var(--ink-dim); letter-spacing:.06em}
+  .apply-why{font-size:12.5px; color:var(--ink-dim); line-height:1.55; margin-top:6px}
+  .apply-why b{color:var(--ink)}
+  .adv-card{padding:16px}
+  .adv-head{display:flex; align-items:flex-start; gap:10px}
+  .adv-name{font-family:var(--serif); font-weight:600; font-size:18px; flex:1; min-width:0}
+  .adv-verdict{font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:4px 9px; border-radius:999px; flex:none}
+  .v-push{background:rgba(123,201,143,.14); color:var(--green)}
+  .v-hold{background:var(--gold-soft); color:var(--gold)}
+  .v-back{background:rgba(232,117,107,.14); color:var(--red)}
+  .v-new{background:var(--panel3); color:var(--ink-dim)}
+  .rx{
+    display:flex; align-items:baseline; justify-content:center; gap:8px; margin:14px 0 4px;
+    font-family:var(--serif); font-weight:600; font-size:30px; font-variant-numeric:tabular-nums;
+  }
+  .rx small{font-family:var(--font); font-size:12px; font-weight:600; color:var(--ink-dim); letter-spacing:.06em}
+  .rx-sub{text-align:center; font-size:12.5px; color:var(--ink-dim); margin-bottom:12px}
+  .adv-why{font-size:13px; color:var(--ink-dim); line-height:1.6; border-top:1px solid var(--line); padding-top:11px}
+  .adv-why b{color:var(--ink)}
+  .adv-sets{display:flex; gap:6px; margin-top:11px; flex-wrap:wrap}
+  .adv-set{
+    flex:1; min-width:64px; text-align:center; background:var(--panel2); border:1px solid var(--line);
+    border-radius:11px; padding:8px 4px;
+  }
+  .adv-set b{display:block; font-family:var(--serif); font-size:15px; font-weight:600}
+  .adv-set span{font-size:9.5px; color:var(--ink-dim); letter-spacing:.05em; text-transform:uppercase}
   .heat{display:flex; gap:3px; overflow-x:auto; padding-bottom:4px}
   .heat-col{display:flex; flex-direction:column; gap:3px}
   .heat-cell{width:12px; height:12px; border-radius:3px; background:var(--panel2); border:1px solid var(--line)}
@@ -373,6 +457,7 @@
     <button class="btn block" id="newRoutineBtn">＋ Create workout</button>
     <button class="btn ice block" id="logCardioBtn" style="margin-top:10px"><svg class="ic-svg " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Log cardio</button>
     <button class="btn block" id="quickLiftBtn" style="margin-top:10px"><svg class="ic-svg " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>Quick lift — one exercise</button>
+    <button class="btn onyx block" id="prepBtn" style="margin-top:10px">Plate prep — stage my weights</button>
     <button class="btn ice block" id="ropeBtn" style="margin-top:10px">Jump rope intervals</button>
     <button class="btn onyx block" id="lagBtn" style="margin-top:10px">Lagging body part focus</button>
     <button class="btn onyx block" id="bodyBtn" style="margin-top:10px"><svg class="ic-svg " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 8.7 15.3 2.7a1 1 0 0 0-1.4 0L2.7 13.9a1 1 0 0 0 0 1.4l6 6a1 1 0 0 0 1.4 0L21.3 10.1a1 1 0 0 0 0-1.4zM7.5 10.5l2 2M10.5 7.5l2 2M13.5 4.5l2 2"/></svg>Body measurements</button>
@@ -391,6 +476,7 @@
   <section id="view-session" class="hidden">
     <div class="session-head">
       <h2 id="sessGroupTitle"></h2>
+      <button class="btn small ghost" id="sessAdvisorBtn">Advisor</button>
       <button class="btn small ghost" id="finishBtn">Finish ✓</button>
     </div>
     <div class="stat-strip">
@@ -406,6 +492,33 @@
       <div class="eyebrow">Session notes</div>
       <textarea id="sessNotes" rows="2" placeholder="Sleep, energy, tweaks to remember next time…"></textarea>
     </div>
+  </section>
+
+  <!-- STATS -->
+  <section id="view-stats" class="hidden">
+    <div class="dash" style="margin-bottom:14px">
+      <div class="tile t2"><span class="num" id="stTotalVol">0</span><span class="lbl">Lifetime lb</span></div>
+      <div class="tile t1"><span class="num" id="stTotalSets">0</span><span class="lbl">Total sets</span></div>
+      <div class="tile t3"><span class="num" id="stTotalEx">0</span><span class="lbl">Exercises</span></div>
+    </div>
+
+    <div class="card" style="padding:14px 16px">
+      <div class="eyebrow">Filter by muscle group</div>
+      <div class="chips" id="statGroupChips"></div>
+      <input id="statSearch" placeholder="Search exercises…" style="margin-top:10px">
+    </div>
+
+    <div id="statList"></div>
+  </section>
+
+  <!-- ADVISOR -->
+  <section id="view-advisor" class="hidden">
+    <div class="card" style="padding:14px 16px">
+      <div class="eyebrow">Plan next session</div>
+      <div class="chips" id="advGroupChips"></div>
+      <div class="muted" id="advIntro" style="margin-top:10px; font-size:13px; line-height:1.5"></div>
+    </div>
+    <div id="advBody"></div>
   </section>
 
   <!-- HISTORY -->
@@ -429,6 +542,8 @@
 <nav>
   <button id="tab-home" class="active">Home</button>
   <button id="tab-session">Session</button>
+  <button id="tab-stats">Stats</button>
+  <button id="tab-advisor">Advisor</button>
   <button id="tab-history">History</button>
 </nav>
 
@@ -832,6 +947,59 @@
 
 <div id="lightbox" class="hidden"><img id="lightboxImg" alt=""><div class="cap">Tap anywhere to close</div></div>
 
+<!-- PLATE PREP -->
+<div class="modal hidden" id="prepModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>Plate prep</h3>
+    <div class="sub">Pick a workout and I'll tell you exactly what to load at each station, using the advisor's target weights and the plates you own.</div>
+    <div class="chips" id="prepChips" style="margin-bottom:12px"></div>
+    <div id="prepBody"></div>
+  </div>
+</div>
+
+<!-- APPLY ADVISOR TO SESSION -->
+<div class="modal hidden" id="applyModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>Advisor for this session</h3>
+    <div class="sub" id="applySub"></div>
+    <div id="applyList"></div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn" id="applyAllBtn" style="flex:1">Apply all</button>
+      <button class="btn ghost" id="applyClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- RENAME EXERCISE -->
+<div class="modal hidden" id="renameModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>Rename exercise</h3>
+    <div class="sub" id="renameSub"></div>
+    <label for="renameInput">New name</label>
+    <input id="renameInput" placeholder="New exercise name">
+    <div style="margin-top:12px">
+      <label for="renameType">Equipment type</label>
+      <select id="renameType">
+        <option value="bodyweight">Bodyweight</option>
+        <option value="band">Resistance band</option>
+        <option value="dumbbell">Dumbbell</option>
+        <option value="barbell">Barbell</option>
+        <option value="cable">Cable</option>
+        <option value="machine">Machine</option>
+      </select>
+      <div class="muted" id="renameTypeHint" style="font-size:12px; margin-top:6px"></div>
+    </div>
+    <div id="renameWarn" class="hidden" style="margin-top:10px; font-size:13px; color:var(--gold); background:var(--gold-soft); border:1px solid rgba(233,180,92,.22); border-radius:11px; padding:10px 12px"></div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn" id="renameSave" style="flex:1">Rename everywhere</button>
+      <button class="btn ghost" id="renameCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- SESSION SUMMARY -->
 <div class="modal hidden" id="summaryModal">
   <div class="sheet">
@@ -854,14 +1022,11 @@
   <div class="sheet">
     <div class="grab"></div>
     <h3>Settings</h3>
-    <div class="sub">Your bodyweight feeds volume math for pullups and dips. Plates set your real loading step — the smallest plate goes on each side, so 0.25 lb plates mean 0.5 lb jumps on a dumbbell or bar.</div>
+    <div class="sub">Your bodyweight feeds volume math for pullups and dips. Bars and handles count as zero, so logged weight is plate weight only.</div>
     <div class="row">
       <div class="field"><label for="stBw">My bodyweight (lb)</label><input id="stBw" type="number" min="0" step="0.5" inputmode="decimal" placeholder="e.g. 182"></div>
-      <div class="field"><label for="stBar">Barbell weight (lb)</label><input id="stBar" type="number" min="0" step="0.5" inputmode="decimal" placeholder="45"></div>
     </div>
-    <div class="row" style="margin-top:10px">
-      <div class="field"><label for="stHandle">Dumbbell handle weight (lb)</label><input id="stHandle" type="number" min="0" step="0.5" inputmode="decimal" placeholder="0 if fixed dumbbells"></div>
-    </div>
+    <div class="muted" style="font-size:12px; margin-top:8px">Bars and handles count as zero — the weight you log is the plate weight alone.</div>
     <div style="margin-top:14px">
       <label>Plates I own (per side)</label>
       <div class="chips" id="plateChips"></div>
@@ -870,6 +1035,12 @@
         <button class="btn ghost small" id="stPlateAdd">Add</button>
       </div>
     </div>
+    <div style="margin-top:16px">
+      <label>Weight steps by equipment (lb)</label>
+      <div class="muted" style="font-size:12px; margin-bottom:8px">Steppers and advisor suggestions move in these amounts. Barbell and dumbbell values are the total change — half lands on each side.</div>
+      <div class="row" id="incRow"></div>
+    </div>
+
     <div class="row" style="margin-top:16px">
       <button class="btn" id="stSave" style="flex:1">Save settings</button>
       <button class="btn ghost" id="stCancel">Close</button>
@@ -956,8 +1127,7 @@ async function loadDB(){
     DB.settings.microPlates=true;
     setTimeout(saveDB,0);
   }
-  if(DB.settings.barWeight==null) DB.settings.barWeight=45;
-  if(DB.settings.dbHandle==null) DB.settings.dbHandle=0;
+  if(!DB.settings.inc) DB.settings.inc={barbell:0.5, dumbbell:1, cable:1, machine:5, band:5, bodyweight:2.5};
   if(DB.activeSession) active = DB.activeSession;
 }
 let saveT=null;
@@ -1085,15 +1255,19 @@ $('esDelete').onclick=()=>{
 
 /* ---------- tabs ---------- */
 function show(view){
-  ['home','session','history'].forEach(v=>{
+  ['home','session','stats','advisor','history'].forEach(v=>{
     $('view-'+v).classList.toggle('hidden', v!==view);
     $('tab-'+v).classList.toggle('active', v===view);
   });
   if(view==='history'){ renderHistory(); renderBackupStatus(); renderHeat(); }
+  if(view==='stats') renderStats();
+  if(view==='advisor') renderAdvisor();
   if(view==='home') renderHome();
 }
 $('tab-home').onclick=()=>show('home');
 $('tab-session').onclick=()=>{ active?show('session'):toast('No active session — start a workout from Home'); };
+$('tab-stats').onclick=()=>show('stats');
+$('tab-advisor').onclick=()=>show('advisor');
 $('tab-history').onclick=()=>show('history');
 
 /* ---------- HOME ---------- */
@@ -1215,10 +1389,12 @@ function renderBxList(){
         <div class="nm">${i+1}. ${e.name}</div>
         <div class="dt">${e.type} · start ${dispW(e.startWeight)||'BW'} ${e.startWeight?uLbl():''} × ${e.targetReps||'?'} reps · ${exLabel(e)}</div>
       </div>
+      <button class="iconbtn" data-rename-bx aria-label="Rename everywhere" title="Rename everywhere"><svg class="ic-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg></button>
       <button class="iconbtn" data-edit-bx aria-label="Edit"><svg class="ic-svg " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
       <button class="iconbtn" data-rm aria-label="Remove"><svg class="ic-svg " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
     item.querySelector('[data-up]').onclick=()=>{ [builder.exercises[i-1],builder.exercises[i]]=[builder.exercises[i],builder.exercises[i-1]]; renderBxList(); };
     item.querySelector('[data-dn]').onclick=()=>{ [builder.exercises[i+1],builder.exercises[i]]=[builder.exercises[i],builder.exercises[i+1]]; renderBxList(); };
+    item.querySelector('[data-rename-bx]').onclick=()=>openRename(e.name);
     item.querySelector('[data-edit-bx]').onclick=()=>startBxEdit(i);
     item.querySelector('[data-rm]').onclick=()=>{ builder.exercises.splice(i,1); if(editingBx===i) cancelBxEdit(); renderBxList(); };
     list.appendChild(item);
@@ -1963,6 +2139,542 @@ $('lightbox').onclick=()=>$('lightbox').classList.add('hidden');
 
 
 
+
+/* =========================================================
+   STATS DASHBOARD — per-exercise analytics
+========================================================= */
+let statFilter='All', statQuery='';
+const MUSCLE_MAP=[
+  ['Biceps',   /curl|chin|bicep|preacher|hammer|concentration/i],
+  ['Triceps',  /tricep|pushdown|press ?down|skull|dip|kickback|overhead ext/i],
+  ['Chest',    /bench|chest|fly|flye|push ?up|pec/i],
+  ['Back',     /row|pull ?up|pulldown|lat|deadlift|shrug|back/i],
+  ['Shoulders',/shoulder|press|lateral|delt|raise|upright|arnold/i],
+  ['Legs',     /squat|leg|lunge|calf|hamstring|quad|glute|hip thrust|rdl/i],
+  ['Core',     /ab|crunch|plank|core|sit ?up|leg raise|russian/i],
+];
+function muscleOf(name){
+  for(const [m,re] of MUSCLE_MAP) if(re.test(name)) return m;
+  return 'Other';
+}
+/* gather every exercise ever logged with its full session series */
+function exerciseIndex(){
+  const idx=new Map();
+  [...finished()].sort((a,b)=>a.start-b.start).forEach(s=>{
+    s.exercises.forEach(e=>{
+      if(!e.sets || !e.sets.length) return;
+      const key=e.name;
+      if(!idx.has(key)) idx.set(key,{name:e.name, type:e.type, pic:null, sessions:[]});
+      const rec=idx.get(key);
+      if(e.pic) rec.pic=e.pic;
+      if(e.type) rec.type=e.type;
+      rec.sessions.push({t:s.start, sets:e.sets, ex:e, group:s.group});
+    });
+  });
+  // pick up pictures from templates too
+  DB.routines.forEach(r=>r.exercises.forEach(e=>{ const rec=idx.get(e.name); if(rec && !rec.pic && e.pic) rec.pic=e.pic; }));
+  return idx;
+}
+function statsFor(rec){
+  const S=rec.sessions;
+  const tops=S.map(s=>bestSet(s.sets));
+  const first=tops[0], last=tops[tops.length-1];
+  const vol=s=>s.sets.reduce((a,x)=>a+x.reps*((x.weight||0)+((rec.type==='bodyweight'&&DB.settings.bw)?DB.settings.bw:0)),0);
+  const allSets=S.reduce((n,s)=>n+s.sets.length,0);
+  const lifetimeVol=S.reduce((a,s)=>a+vol(s),0);
+  const bestEver=[...tops].sort((a,b)=>(b.weight-a.weight)||(b.reps-a.reps))[0];
+  const e1=e1rmSet(bestEver.weight||0,bestEver.reps);
+  // 30-day change on top-set weight (fall back to reps for bodyweight work)
+  const cutoff=Date.now()-30*864e5;
+  const win=S.filter(s=>s.t>=cutoff);
+  let delta=null, deltaPct=null, deltaUnit='lb';
+  const useReps = !last.weight;
+  if(win.length>=2){
+    const a=bestSet(win[0].sets), b=bestSet(win[win.length-1].sets);
+    if(useReps){ delta=b.reps-a.reps; deltaUnit='reps'; deltaPct=a.reps?Math.round(delta/a.reps*100):null; }
+    else { delta=Math.round((b.weight-a.weight)*4)/4; deltaPct=a.weight?Math.round(delta/a.weight*100):null; }
+  } else if(S.length>=2){
+    if(useReps){ delta=last.reps-first.reps; deltaUnit='reps'; deltaPct=first.reps?Math.round(delta/first.reps*100):null; }
+    else { delta=Math.round((last.weight-first.weight)*4)/4; deltaPct=first.weight?Math.round(delta/first.weight*100):null; }
+  }
+  const days=daysAgo(S[S.length-1].t);
+  // stall detection: 3+ sessions at same top weight
+  let stalled=0;
+  for(let i=tops.length-1;i>0;i--){ if(tops[i].weight===tops[i-1].weight) stalled++; else break; }
+  // same weight but fewer reps than the prior session = regressing under the surface
+  let repSlide=false;
+  if(tops.length>=2){
+    const a=tops[tops.length-2], b=tops[tops.length-1];
+    if(a.weight===b.weight && b.reps<a.reps) repSlide=true;
+  }
+  const prs=S.reduce((n,s)=>n+s.sets.filter(x=>x.pr).length,0);
+  const avgRpe=(()=>{ const r=S.flatMap(s=>s.sets.map(x=>x.rpe).filter(Boolean)); return r.length?(r.reduce((a,b)=>a+b,0)/r.length).toFixed(1):null; })();
+  return {S, tops, first, last, bestEver, e1, delta, deltaPct, deltaUnit, days, allSets, lifetimeVol, stalled, repSlide, prs, avgRpe, useReps,
+          series:S.map(s=>({t:s.t, v:useReps?bestSet(s.sets).reps:bestSet(s.sets).weight}))};
+}
+/* inline sparkline with gradient fill */
+function sparkline(series){
+  if(series.length<2) return '<div class="muted" style="font-size:12px">One session logged — trend appears after the next one.</div>';
+  const W=300,H=44,pad=3;
+  const vals=series.map(p=>p.v);
+  const mx=Math.max(...vals), mn=Math.min(...vals);
+  const rng=(mx-mn)||1;
+  const x=i=>pad+(W-2*pad)*i/(series.length-1);
+  const y=v=>H-pad-(H-2*pad)*((v-mn)/rng);
+  const pts=vals.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const area=`${pad},${H-pad} ${pts} ${(W-pad)},${H-pad}`;
+  const up=vals[vals.length-1]>=vals[0];
+  const col=up?'#7BC98F':'#E8756B';
+  const gid='g'+Math.random().toString(36).slice(2,7);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${col}" stop-opacity=".28"/><stop offset="100%" stop-color="${col}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <polygon points="${area}" fill="url(#${gid})"/>
+    <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${x(vals.length-1).toFixed(1)}" cy="${y(vals[vals.length-1]).toFixed(1)}" r="3" fill="${col}"/>
+  </svg>`;
+}
+function renderStats(){
+  const idx=exerciseIndex();
+  const all=[...idx.values()];
+  // headline totals
+  const totalVol=finished().reduce((a,s)=>a+sessVol(s),0);
+  const totalSets=finished().reduce((a,s)=>a+s.exercises.reduce((n,e)=>n+e.sets.length,0),0);
+  $('stTotalVol').textContent=Math.round(totalVol).toLocaleString();
+  $('stTotalSets').textContent=totalSets.toLocaleString();
+  $('stTotalEx').textContent=all.length;
+
+  // group chips
+  const groups=['All',...[...new Set(all.map(r=>muscleOf(r.name)))].sort()];
+  const gc=$('statGroupChips'); gc.innerHTML='';
+  groups.forEach(g=>{
+    const b=document.createElement('button');
+    b.className='chip'+(statFilter===g?' sel':'');
+    b.textContent=g;
+    b.onclick=()=>{ statFilter=g; renderStats(); };
+    gc.appendChild(b);
+  });
+
+  const list=$('statList'); list.innerHTML='';
+  let rows=all.filter(r=>(statFilter==='All'||muscleOf(r.name)===statFilter));
+  if(statQuery) rows=rows.filter(r=>r.name.toLowerCase().includes(statQuery));
+  if(!rows.length){
+    list.innerHTML=`<div class="empty">${all.length?'No exercises match that filter.':'Log a workout and detailed per-exercise stats appear here.'}</div>`;
+    return;
+  }
+  rows.sort((a,b)=>b.sessions[b.sessions.length-1].t - a.sessions[a.sessions.length-1].t);
+  rows.forEach(rec=>{
+    const st=statsFor(rec);
+    const card=document.createElement('div');
+    card.className='card stat-card';
+    const dEl = st.delta==null ? `<span style="color:var(--ink-dim)">—</span><small>need 2 sessions</small>`
+      : `<span style="color:${st.delta>0?'var(--green)':(st.delta<0?'var(--red)':'var(--ink-dim)')}">${st.delta>0?'+':''}${st.delta} ${st.deltaUnit}</span><small>${st.deltaPct!=null?`${st.deltaPct>0?'+':''}${st.deltaPct}% · 30d`:'30d'}</small>`;
+    const flags=[];
+    if(st.delta>0) flags.push('<span class="flag up">Growing</span>');
+    if(st.delta<0) flags.push('<span class="flag dn">Declining</span>');
+    if(st.stalled>=2) flags.push(`<span class="flag warn">Stalled ${st.stalled+1} sessions</span>`);
+    if(st.repSlide) flags.push('<span class="flag dn">Reps slipping</span>');
+    if(st.days>=10) flags.push(`<span class="flag warn">Not trained ${st.days}d</span>`);
+    if(st.prs) flags.push(`<span class="flag pr">★ ${st.prs} PR${st.prs>1?'s':''}</span>`);
+    card.innerHTML=`
+      <div class="stat-top">
+        ${rec.pic?`<img class="stat-pic" src="${rec.pic}" alt="">`:''}
+        <div class="stat-id">
+          <div class="stat-name">${rec.name}</div>
+          <div class="stat-when">${muscleOf(rec.name)} · ${st.days===0?'trained today':st.days===1?'trained yesterday':`${st.days} days ago`} · ${st.S.length} session${st.S.length!==1?'s':''}</div>
+        </div>
+        <div class="stat-delta">${dEl}</div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; margin-top:-4px">
+        <button class="iconbtn" data-rename="${rec.name.replace(/"/g,'&quot;')}" aria-label="Rename exercise" title="Rename"><svg class="ic-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
+      </div>
+      <div class="spark-wrap">${sparkline(st.series)}</div>
+      <div class="stat-metrics">
+        <div><span class="v">${st.last.reps}×${dispW(st.last.weight)||'BW'}</span><span class="k">Last top set</span></div>
+        <div><span class="v">${st.bestEver.reps}×${dispW(st.bestEver.weight)||'BW'}</span><span class="k">Best ever</span></div>
+        <div><span class="v">${st.e1?Math.round(st.e1):'—'}</span><span class="k">Est 1RM</span></div>
+        <div><span class="v">${Math.round(st.lifetimeVol).toLocaleString()}</span><span class="k">Total lb</span></div>
+        <div><span class="v">${st.avgRpe||'—'}</span><span class="k">Avg RPE</span></div>
+      </div>
+      ${flags.length?`<div class="stat-flags">${flags.join('')}</div>`:''}`;
+    card.onclick=ev=>{ if(ev.target.closest('[data-rename]')) return; openProgress(rec.name); };
+    const rn=card.querySelector('[data-rename]');
+    if(rn) rn.onclick=ev=>{ ev.stopPropagation(); openRename(rec.name); };
+    list.appendChild(card);
+  });
+}
+$('statSearch').addEventListener('input',e=>{ statQuery=e.target.value.trim().toLowerCase(); renderStats(); });
+
+
+
+/* =========================================================
+   ADVISOR — evidence-based prescription for the next session
+   Principles applied:
+   • Double progression: earn the top of the rep range before adding load
+   • Load–rep relationship: ~81% 1RM ≈ 7 reps (inverse Epley), 6–8 = hypertrophy/strength zone
+   • Autoregulation by RPE: RIR ≥3 → add load; RPE 10 with falling reps → deload
+   • Fatigue management: ~2%/set within a session; 5–10% deload after a 3-session stall
+   • Frequency: 48–72h between sessions for a muscle; >10 days untrained = detraining risk
+========================================================= */
+let advGroup=null;
+function renderAdvisor(){
+  const idx=exerciseIndex();
+  const all=[...idx.values()];
+  const groups=[...new Set(all.map(r=>muscleOf(r.name)))].sort();
+  if(!advGroup || !groups.includes(advGroup)) advGroup=groups[0]||null;
+
+  const gc=$('advGroupChips'); gc.innerHTML='';
+  if(!groups.length){
+    gc.innerHTML='<span class="muted">Log a few sessions and personalized recommendations appear here.</span>';
+    $('advIntro').textContent=''; $('advBody').innerHTML='';
+    return;
+  }
+  groups.forEach(g=>{
+    const b=document.createElement('button');
+    b.className='chip'+(advGroup===g?' sel':'');
+    b.textContent=g;
+    b.onclick=()=>{ advGroup=g; renderAdvisor(); };
+    gc.appendChild(b);
+  });
+
+  const rows=all.filter(r=>muscleOf(r.name)===advGroup)
+                .sort((a,b)=>b.sessions[b.sessions.length-1].t-a.sessions[a.sessions.length-1].t);
+  // group-level readiness
+  const lastT=Math.max(...rows.map(r=>r.sessions[r.sessions.length-1].t));
+  const dsince=daysAgo(lastT);
+  const readiness = dsince<2 ? `Only ${dsince===0?'hours':'1 day'} since your last ${advGroup} session — 48–72h between sessions gives the muscle time to rebuild.`
+    : dsince<=4 ? `${dsince} days since your last ${advGroup} work — well recovered and ready to push.`
+    : dsince<=9 ? `${dsince} days since your last ${advGroup} session — still fine, but weekly frequency drives faster growth.`
+    : `${dsince} days off ${advGroup} — expect a small strength dip; ease in at the lower end of these numbers.`;
+  $('advIntro').textContent=readiness;
+
+  const body=$('advBody'); body.innerHTML='';
+  rows.forEach(rec=>{
+    const st=statsFor(rec);
+    const rx=prescribe(rec, st);
+    const card=document.createElement('div');
+    card.className='card adv-card';
+    card.innerHTML=`
+      <div class="adv-head">
+        <div class="adv-name">${rec.name}</div>
+        <span class="adv-verdict ${rx.cls}">${rx.verdict}</span>
+      </div>
+      <div class="rx">${rx.weight!=null?`${rx.weight}<small>LB</small>`:'BW'} <span style="color:var(--ink-ghost)">×</span> ${rx.reps}<small>REPS</small></div>
+      <div class="rx-sub">${rx.sets} working sets · rest ${fmtClock(rx.rest)}</div>
+      <div class="adv-sets">
+        ${rx.plan.map((p,i)=>`<div class="adv-set"><b>${p.reps}×${p.weight!=null?p.weight:'BW'}</b><span>Set ${i+1}</span></div>`).join('')}
+      </div>
+      <div class="adv-why">${rx.why}</div>`;
+    body.appendChild(card);
+  });
+}
+function prescribe(rec, st){
+  const type=rec.type||'dumbbell';
+  const step=plateStep(type);
+  const last=st.last;                       // last session's top set
+  const lastSession=st.S[st.S.length-1];
+  const rpes=lastSession.sets.map(s=>s.rpe).filter(Boolean);
+  const avgRpe=rpes.length?rpes.reduce((a,b)=>a+b,0)/rpes.length:null;
+  const rir=avgRpe?10-avgRpe:null;
+  const setCount=Math.max(3, Math.min(5, Math.round(st.S.reduce((a,s)=>a+s.sets.length,0)/st.S.length)));
+  const rest=(lastSession.ex && lastSession.ex.rest) || 90;
+  const bw=!last.weight;
+  let weight=last.weight, reps=last.reps, verdict, cls, why;
+
+  if(st.S.length===1 && last.reps>=REP_LOW && last.reps<=REP_HIGH){
+    verdict='Baseline'; cls='v-new';
+    reps=Math.min(REP_HIGH,last.reps+1);
+    why=`Only one session on record and it landed in the ${REP_LOW}–${REP_HIGH} zone. Repeat <b>${dispW(last.weight)||'bodyweight'}</b> and chase <b>${reps} reps</b> to confirm it's a true working weight before adding load.`;
+  }
+  else if(st.stalled>=2 || st.repSlide){
+    // 3+ sessions same load, or reps falling: planned deload then re-climb
+    verdict='Deload'; cls='v-back';
+    weight = bw ? null : Math.max(loadBase(type), snapWeight(last.weight*0.92, type));
+    reps=REP_HIGH;
+    why=`You've held <b>${dispW(last.weight)} lb</b> for ${st.stalled+1} sessions${st.repSlide?' and reps are slipping':''} — a stall usually means accumulated fatigue, not a hard ceiling. Drop ~8% to <b>${weight} lb</b>, hit ${REP_HIGH} clean reps, then climb back. Lifters who deload at a plateau typically pass their old best within 2–3 sessions.`;
+  }
+  else if(last.reps>REP_HIGH || (rir!=null && rir>=3)){
+    verdict='Add load'; cls='v-push';
+    // the further past the range, the bigger the jump: use the 1RM curve, floor at one plate step
+    const over=Math.max(0,last.reps-REP_HIGH);
+    const byCurve = e1rmSet(last.weight,last.reps)/(1+REP_TARGET/30);
+    const pct=Math.min(0.10, 0.03*Math.max(1,over) + (rir!=null&&rir>=3?0.02:0));
+    const raw=Math.max(byCurve, last.weight*(1+pct), last.weight+step);
+    weight = bw ? null : snapWeight(raw, type);
+    reps=REP_LOW;
+    why=`Last time you got <b>${last.reps} reps</b>${avgRpe?` at RPE ${avgRpe.toFixed(1)} (~${rir.toFixed(0)} in reserve)`:''}${last.reps>REP_HIGH?` — past the top of the ${REP_LOW}–${REP_HIGH} range`:' — the set had room left'}. Double progression says earn the top of the range, then add load: go to <b>${bw?'added resistance':weight+' lb'}</b> and expect ${REP_LOW}–${REP_LOW+1} reps at first.${!bw&&perSide(weight,type)?` Per side: ${perSide(weight,type)}.`:''}`;
+  }
+  else if(last.reps<REP_LOW){
+    verdict='Reduce'; cls='v-back';
+    weight = bw ? null : Math.max(loadBase(type), snapWeight(e1rmSet(last.weight,last.reps)/(1+REP_TARGET/30), type));
+    reps=REP_TARGET;
+    why=`<b>${last.reps} reps</b> is under the ${REP_LOW}–${REP_HIGH} zone, so the load is above your ~81%-of-1RM target. Your estimated 1RM is <b>${Math.round(st.e1)} lb</b>; the weight that should give ~7 reps is <b>${weight} lb</b>. Volume in the growth range beats grinding singles.`;
+  }
+  else {
+    verdict='Earn the top'; cls='v-hold';
+    weight = bw ? null : last.weight;
+    reps=Math.min(REP_HIGH,last.reps+1);
+    why=`<b>${last.reps} reps</b> sits in the ${REP_LOW}–${REP_HIGH} zone${avgRpe?` at RPE ${avgRpe.toFixed(1)}`:''} — hold <b>${bw?'bodyweight':dispW(last.weight)+' lb'}</b> and chase <b>${reps} reps</b>. Add load only once you own ${REP_HIGH}; that's the double-progression rule that keeps every jump earned rather than forced.`;
+  }
+  // per-set plan with intra-session fatigue (~1 rep lost per set after the first two)
+  const plan=[];
+  for(let i=0;i<setCount;i++){
+    const drop = i<=1 ? 0 : Math.min(2, i-1);
+    plan.push({reps:Math.max(REP_LOW-1, reps-drop), weight: weight==null?null:dispW(weight)});
+  }
+  return {verdict, cls, weight: weight==null?null:dispW(weight), reps, sets:setCount, rest, plan, why};
+}
+
+
+
+/* =========================================================
+   PLATE PREP — stage the right weights at every station
+========================================================= */
+let prepRoutineId=null;
+function openPrep(){
+  const rts=DB.routines;
+  const chips=$('prepChips'); chips.innerHTML='';
+  if(!rts.length){
+    chips.innerHTML='<span class="muted">Create a workout first and I\'ll prep its plates.</span>';
+    $('prepBody').innerHTML=''; $('prepModal').classList.remove('hidden'); return;
+  }
+  if(!prepRoutineId || !rts.some(r=>r.id===prepRoutineId)) prepRoutineId=rts[0].id;
+  rts.forEach(r=>{
+    const b=document.createElement('button');
+    b.className='chip'+(prepRoutineId===r.id?' sel':'');
+    b.textContent=r.name;
+    b.onclick=()=>{ prepRoutineId=r.id; openPrep(); };
+    chips.appendChild(b);
+  });
+  renderPrep();
+  $('prepModal').classList.remove('hidden');
+}
+$('prepBtn').onclick=openPrep;
+
+/* greedy plate breakdown -> array of plate sizes for ONE side */
+function plateList(total, type){
+  const base=loadBase(type);
+  let side=(total-base)/2;
+  const out=[];
+  if(side<=0.01) return {plates:out, short:0, side:0};
+  plates().slice().sort((a,b)=>b-a).forEach(p=>{ while(side>=p-0.001){ out.push(p); side-=p; } });
+  return {plates:out, short:Math.round(side*100)/100, side:(total-base)/2};
+}
+function renderPrep(){
+  const rt=DB.routines.find(r=>r.id===prepRoutineId);
+  const body=$('prepBody');
+  if(!rt){ body.innerHTML=''; return; }
+  const idx=exerciseIndex();
+  const tally={};       // plate size -> pairs needed across all stations
+  let anyShort=false;
+  let html='';
+
+  rt.exercises.forEach(ex=>{
+    const rec=idx.get(ex.name);
+    let target, source;
+    if(rec){
+      rec.type=ex.type||rec.type;
+      const rx=prescribe(rec, statsFor(rec));
+      target = rx.weight!=null ? toLb(rx.weight) : 0;
+      source = `advisor · ${rx.verdict.toLowerCase()}`;
+    } else {
+      target = ex.startWeight||0;
+      source = 'your saved starting weight';
+    }
+    const type=ex.type||'dumbbell';
+    let inner='', note='';
+
+    if(type==='barbell' || type==='dumbbell'){
+      const {plates:ps, short, side}=plateList(target, type);
+      const base=loadBase(type);
+      if(target<=0.01){
+        inner=`<span class="plate-pill dim">${type==='barbell'?'Empty bar':'Bare handles'}</span>`;
+      } else {
+        // group identical plates
+        const g={}; ps.forEach(p=>g[p]=(g[p]||0)+1);
+        inner=Object.keys(g).sort((a,b)=>b-a).map(p=>`<span class="plate-pill">${g[p]}× ${p} lb</span>`).join('')
+          + `<span class="muted" style="font-size:12px">per side</span>`;
+        // tally: each per-side plate needs a matching pair (both sides), and dumbbells come in twos
+        const mult = type==='dumbbell' ? 4 : 2;      // 2 sides × 2 dumbbells
+        Object.keys(g).forEach(p=>{ tally[p]=(tally[p]||0)+g[p]*mult; });
+        if(short>0.01){ anyShort=true; note=`<span class="prep-warn">Can't hit exactly — ${short} lb per side short with your plates. Nearest loadable: ${dispW(target-short*2)} lb.</span>`; }
+      }
+      note = note || (type==='barbell'
+        ? `<b>${dispW(side)} lb of plates on each side</b> · bar counts as zero`
+        : `<b>${dispW(side)} lb on each end of both dumbbells</b> · handles count as zero`);
+    } else if(type==='cable' || type==='machine'){
+      inner=`<span class="plate-pill">Pin at ${dispW(target)} lb</span>`;
+      note=`Stack machine — no plates to carry. If the stack can't hit ${dispW(target)} exactly, take the closest pin and note it.`;
+    } else if(type==='band'){
+      inner=`<span class="plate-pill">${fmtBand(ex.bandStrength)||'band'}</span>`;
+      note='Grab this band before you start so you\'re not hunting for it mid-set.';
+    } else {
+      inner = target>0 ? `<span class="plate-pill">+${dispW(target)} lb added</span>` : `<span class="plate-pill dim">Bodyweight only</span>`;
+      note = target>0 ? 'Load a belt or vest with this before your first set.' : 'Nothing to load.';
+    }
+
+    html += `<div class="prep-station">
+      <div class="prep-head">
+        <span class="prep-name">${ex.name}</span>
+        <span class="prep-target">${target>0?dispW(target)+' lb':'BW'}</span>
+      </div>
+      <div class="muted" style="font-size:11.5px; margin-top:2px">${type} · ${source}</div>
+      <div class="prep-plates">${inner}</div>
+      <div class="prep-note">${note}</div>
+    </div>`;
+  });
+
+  // combined plate tally
+  const sizes=Object.keys(tally).sort((a,b)=>b-a);
+  if(sizes.length){
+    html += `<div class="prep-total">
+      <div class="eyebrow">Total plates to gather</div>
+      ${sizes.map(p=>`<div class="prep-total-row">
+        <span class="sz">${p} lb</span>
+        <span class="ct">${tally[p]} plate${tally[p]!==1?'s':''} (${tally[p]/2} pair${tally[p]/2!==1?'s':''})</span>
+      </div>`).join('')}
+      <div class="prep-note" style="margin-top:10px">Counts assume every station is loaded at once. If you share plates between stations, you only need the largest single requirement.</div>
+    </div>`;
+  }
+  if(anyShort) html += `<div class="prep-note" style="margin-top:10px"><span class="prep-warn">Some targets aren't loadable with your current plates.</span> Add the missing sizes in Settings if you buy more.</div>`;
+  body.innerHTML=html;
+}
+
+/* ---------- apply advisor recommendations to the live session ---------- */
+function sessionRecs(){
+  if(!active) return [];
+  const idx=exerciseIndex();
+  return active.exercises.map((ex,xi)=>{
+    const rec=idx.get(ex.name);
+    if(!rec){
+      return {xi, ex, none:true,
+        rx:{verdict:'No history', cls:'v-new', weight:ex.startWeight?dispW(ex.startWeight):null, reps:ex.targetReps||8,
+            sets:3, rest:ex.rest||90, plan:[],
+            why:`First time logging <b>${ex.name}</b>. Start at your saved <b>${ex.startWeight?dispW(ex.startWeight)+' lb':'bodyweight'} × ${ex.targetReps||8}</b> and the advisor will tune it from next session.`}};
+    }
+    rec.type=ex.type||rec.type;
+    return {xi, ex, rx:prescribe(rec, statsFor(rec))};
+  });
+}
+function openApply(){
+  if(!active) return toast('Start a session first');
+  const recs=sessionRecs();
+  $('applySub').textContent=`${active.group} — tap Apply to load the recommended reps and weight into an exercise. Nothing is logged until you log the set.`;
+  const list=$('applyList'); list.innerHTML='';
+  if(!recs.length){ list.innerHTML='<div class="empty">No exercises in this session yet.</div>'; return; }
+  recs.forEach(r=>{
+    const applied = loggerState[r.xi] && loggerState[r.xi].applied;
+    const item=document.createElement('div');
+    item.className='apply-item'+(applied?' done':'');
+    item.innerHTML=`
+      <div class="apply-top">
+        <span class="apply-name">${r.ex.name}</span>
+        <span class="adv-verdict ${r.rx.cls}">${r.rx.verdict}</span>
+      </div>
+      <div class="apply-rx">${r.rx.weight!=null?`${r.rx.weight}<small> LB</small>`:'BW'} × ${r.rx.reps}<small> REPS</small>
+        <span style="font-family:var(--font); font-size:12px; color:var(--ink-dim); font-weight:500"> · ${r.rx.sets} sets · rest ${fmtClock(r.rx.rest)}</span></div>
+      <div class="apply-why">${r.rx.why}</div>
+      <button class="btn small ${applied?'ghost':''}" data-apply="${r.xi}" style="width:100%; margin-top:11px">${applied?'Applied ✓ — apply again':'Apply to '+r.ex.name}</button>`;
+    item.querySelector('[data-apply]').onclick=()=>applyRec(r);
+    list.appendChild(item);
+  });
+}
+function applyRec(r){
+  const w = r.rx.weight!=null ? toLb(r.rx.weight) : 0;
+  loggerState[r.xi]={reps:r.rx.reps, weight:w, rpe:null, applied:true};
+  if(r.rx.rest) r.ex.rest=r.rx.rest;
+  r.ex.recNote=`Advisor: ${r.rx.verdict.toLowerCase()} — ${r.rx.weight!=null?r.rx.weight+' lb':'bodyweight'} × ${r.rx.reps} reps for ${r.rx.sets} sets.`;
+  saveDB(); renderSession(); openApply();
+  toast(`${r.ex.name} set to ${r.rx.weight!=null?r.rx.weight+' lb':'BW'} × ${r.rx.reps}`);
+}
+$('sessAdvisorBtn').onclick=()=>{ openApply(); $('applyModal').classList.remove('hidden'); };
+$('applyClose').onclick=()=>$('applyModal').classList.add('hidden');
+$('applyAllBtn').onclick=()=>{
+  const recs=sessionRecs();
+  recs.forEach(r=>{
+    const w = r.rx.weight!=null ? toLb(r.rx.weight) : 0;
+    loggerState[r.xi]={reps:r.rx.reps, weight:w, rpe:null, applied:true};
+    if(r.rx.rest) r.ex.rest=r.rx.rest;
+    r.ex.recNote=`Advisor: ${r.rx.verdict.toLowerCase()} — ${r.rx.weight!=null?r.rx.weight+' lb':'bodyweight'} × ${r.rx.reps} reps for ${r.rx.sets} sets.`;
+  });
+  saveDB(); renderSession();
+  $('applyModal').classList.add('hidden');
+  toast(`Advisor applied to ${recs.length} exercise${recs.length!==1?'s':''}`);
+};
+
+/* ---------- rename an exercise everywhere (history stays attached) ---------- */
+let renameTarget=null;
+function countUsages(name){
+  const n=name.toLowerCase();
+  let sessions=0, sets=0, templates=0;
+  finished().forEach(s=>s.exercises.forEach(e=>{
+    if(e.name.toLowerCase()===n){ sessions++; sets+=e.sets.length; }
+  }));
+  DB.routines.forEach(r=>r.exercises.forEach(e=>{ if(e.name.toLowerCase()===n) templates++; }));
+  return {sessions, sets, templates};
+}
+function currentTypeOf(name){
+  const n=name.toLowerCase();
+  let t=null;
+  DB.routines.forEach(r=>r.exercises.forEach(e=>{ if(e.name.toLowerCase()===n && e.type) t=e.type; }));
+  if(!t) [...finished()].sort((a,b)=>b.start-a.start).forEach(s=>s.exercises.forEach(e=>{
+    if(!t && e.name.toLowerCase()===n && e.type) t=e.type; }));
+  return t||'dumbbell';
+}
+function updateRenameTypeHint(){
+  const t=$('renameType').value;
+  const inc=incFor(t);
+  $('renameTypeHint').textContent = t==='bodyweight'
+    ? 'Advisor will progress by added weight or reps.'
+    : `Advisor will adjust in ${inc} lb steps for ${t} work${(t==='barbell'||t==='dumbbell')?` (${inc/2} lb per side)`:''}.`;
+}
+function openRename(name){
+  renameTarget=name;
+  $('renameType').value=currentTypeOf(name);
+  updateRenameTypeHint();
+  const u=countUsages(name);
+  $('renameSub').textContent=`"${name}" — ${u.sets} logged set${u.sets!==1?'s':''} across ${u.sessions} session${u.sessions!==1?'s':''}${u.templates?` and ${u.templates} saved workout${u.templates!==1?'s':''}`:''}. Everything follows the new name; nothing is lost.`;
+  $('renameInput').value=name;
+  $('renameWarn').classList.add('hidden');
+  $('renameModal').classList.remove('hidden');
+  setTimeout(()=>{ $('renameInput').focus(); $('renameInput').select(); },50);
+}
+$('renameCancel').onclick=()=>{ renameTarget=null; $('renameModal').classList.add('hidden'); };
+$('renameType').onchange=updateRenameTypeHint;
+$('renameInput').addEventListener('input',()=>{
+  const v=$('renameInput').value.trim().toLowerCase();
+  const w=$('renameWarn');
+  if(v && v!==renameTarget.toLowerCase() && countUsages(v).sets>0){
+    const u=countUsages(v);
+    w.textContent=`Heads up: "${$('renameInput').value.trim()}" already exists with ${u.sets} logged sets. Renaming will merge both histories into one exercise.`;
+    w.classList.remove('hidden');
+  } else w.classList.add('hidden');
+});
+$('renameSave').onclick=async ()=>{
+  const oldName=renameTarget;
+  const newName=$('renameInput').value.trim();
+  if(!newName) return toast('Enter a name');
+  if(newName===oldName && $('renameType').value===currentTypeOf(oldName)){ $('renameModal').classList.add('hidden'); return; }
+  const merging = newName.toLowerCase()!==oldName.toLowerCase() && countUsages(newName.toLowerCase()).sets>0;
+  if(merging && !await appConfirm(`Merge "${oldName}" into the existing "${newName}"? Their histories will be combined.`,'Merge')) return;
+  const n=oldName.toLowerCase();
+  const newType=$('renameType').value;
+  let changed=0;
+  // history — sets themselves are untouched, only the label/type changes
+  DB.sessions.forEach(s=>s.exercises.forEach(e=>{ if(e.name.toLowerCase()===n){ e.name=newName; e.type=newType; changed++; } }));
+  // saved workouts
+  DB.routines.forEach(r=>r.exercises.forEach(e=>{ if(e.name.toLowerCase()===n){ e.name=newName; e.type=newType; changed++; } }));
+  // live session too
+  if(active) active.exercises.forEach(e=>{ if(e.name.toLowerCase()===n){ e.name=newName; e.type=newType; } });
+  saveDB();
+  renameTarget=null;
+  $('renameModal').classList.add('hidden');
+  if(builder){ builder.exercises.forEach(e=>{ if(e.name.toLowerCase()===n) e.name=newName; }); renderBxList(); }
+  renderStats(); renderHome(); if(active) renderSession();
+  toast(`Updated "${newName}" (${newType}) in ${changed} place${changed!==1?'s':''}`);
+};
+
 /* ---------- session summary ---------- */
 function showSummary(s){
   const sets=s.exercises.reduce((n,e)=>n+e.sets.length,0);
@@ -2057,9 +2769,8 @@ const DEFAULT_PLATES=[0.25,0.5,0.75,1,1.25,2.5,5,10,25];
 function plates(){ const p=DB.settings.plates; return (p&&p.length)?p.slice().sort((a,b)=>a-b):DEFAULT_PLATES.slice(); }
 function openSettings(){
   $('stBw').value=DB.settings.bw||'';
-  $('stBar').value=DB.settings.barWeight??45;
-  $('stHandle').value=DB.settings.dbHandle??0;
   renderPlateChips();
+  renderIncFields();
   $('setModal').classList.remove('hidden');
 }
 function renderPlateChips(){
@@ -2078,10 +2789,20 @@ $('stPlateAdd').onclick=()=>{
   const list=plates(); if(!list.includes(v)) list.push(v);
   DB.settings.plates=list; $('stPlateNew').value=''; renderPlateChips();
 };
+function renderIncFields(){
+  const wrap=$('incRow'); if(!wrap) return;
+  const types=[['dumbbell','Dumbbell'],['barbell','Barbell'],['cable','Cable'],['machine','Machine'],['band','Band'],['bodyweight','Bodyweight']];
+  wrap.innerHTML=types.map(([k,label])=>
+    `<div class="field" style="min-width:30%"><label for="inc-${k}">${label}</label>
+     <input id="inc-${k}" type="number" min="0.25" step="0.25" inputmode="decimal" value="${incFor(k)}"></div>`).join('');
+}
 $('stSave').onclick=()=>{
   DB.settings.bw=parseFloat($('stBw').value)||null;
-  DB.settings.barWeight=parseFloat($('stBar').value)||45;
-  DB.settings.dbHandle=parseFloat($('stHandle').value)||0;
+  DB.settings.inc=DB.settings.inc||{};
+  ['dumbbell','barbell','cable','machine','band','bodyweight'].forEach(k=>{
+    const v=parseFloat(($('inc-'+k)||{}).value);
+    if(v>0) DB.settings.inc[k]=v;
+  });
   if(!DB.settings.plates) DB.settings.plates=DEFAULT_PLATES.slice();
   saveDB(); $('setModal').classList.add('hidden');
   toast('Settings saved'); renderHome(); if(active) renderSession();
@@ -2090,16 +2811,18 @@ $('stCancel').onclick=()=>$('setModal').classList.add('hidden');
 $('bwBtn').onclick=openSettings;
 
 /* loadable-weight snapping: only suggest weights you can actually build */
-function loadBase(type){
-  if(type==='barbell') return DB.settings.barWeight??45;
-  if(type==='dumbbell') return DB.settings.dbHandle??0;
-  return 0;
+/* Bar and handles are treated as weightless: the number you log is the plate weight only. */
+function loadBase(type){ return 0; }
+/* increment per equipment type — editable in Settings.
+   Barbell/dumbbell values are TOTAL (half goes on each side). */
+const DEFAULT_INC={barbell:0.5, dumbbell:1, cable:1, machine:5, band:5, bodyweight:2.5};
+function incFor(type){
+  const s=DB.settings.inc||{};
+  if(s[type]!=null) return s[type];
+  if(type==='barbell'){ const p=plates(); return p.length?p[0]*2:DEFAULT_INC.barbell; }
+  return DEFAULT_INC[type]??1;
 }
-function plateStep(type){
-  const p=plates();
-  if(!p.length) return 0.25;
-  return (type==='barbell'||type==='dumbbell') ? p[0]*2 : p[0];   // a plate goes on each side
-}
+function plateStep(type){ return incFor(type); }
 function snapWeight(w,type){
   const base=loadBase(type), step=plateStep(type);
   if(w<=base) return base;
@@ -2107,6 +2830,7 @@ function snapWeight(w,type){
 }
 /* what to hang on each side, greedily, from plates you own */
 function perSide(total,type){
+  if(type!=='barbell' && type!=='dumbbell') return '';   // stacks/machines aren't plate-loaded
   const base=loadBase(type);
   let side=(total-base)/2;
   if(side<=0.01) return '';
