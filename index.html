@@ -207,6 +207,16 @@
   .prep-name{flex:1; min-width:0; font-family:var(--serif); font-weight:600; font-size:16.5px}
   .prep-target{font-family:var(--serif); font-weight:600; font-size:17px; color:var(--gold); font-variant-numeric:tabular-nums}
   .prep-plates{display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; align-items:center}
+  .prep-sets{width:100%; margin-top:4px}
+  .prep-set{display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--line)}
+  .prep-set:last-child{border-bottom:none}
+  .prep-set.head{border-bottom:1px solid var(--hairline)}
+  .prep-set.head span{font-size:9.5px; color:var(--ink-dim); font-weight:700; letter-spacing:.08em}
+  .ps-n{width:24px; flex:none; font-weight:700; color:var(--ink-dim); font-size:13px}
+  .ps-w{width:64px; flex:none; font-family:var(--serif); font-weight:600; font-size:15px; font-variant-numeric:tabular-nums}
+  .ps-p{flex:1; display:flex; gap:4px; flex-wrap:wrap}
+  .ps-p .plate-pill{padding:3px 8px; font-size:11.5px}
+  .ps-r{width:34px; flex:none; text-align:right; color:var(--ink-dim); font-size:12px; font-variant-numeric:tabular-nums}
   .plate-pill{
     background:var(--gold-soft); border:1px solid rgba(233,180,92,.28); color:var(--gold);
     border-radius:999px; padding:5px 11px; font-weight:700; font-size:13px; font-variant-numeric:tabular-nums;
@@ -2452,6 +2462,30 @@ function openPrep(){
 }
 $('prepBtn').onclick=openPrep;
 
+/* Predict each set's working weight.
+   Within a session reps fade (~1 rep per set past the second). If a set is predicted to
+   fall below the 6-rep floor, the load is stepped down so the set still lands in 6–8 —
+   which is exactly what you'd do on the floor, so the plates are ready in advance. */
+function predictSets(rx, type){
+  const step=incFor(type);
+  const out=[];
+  let w = rx.weight!=null ? toLb(rx.weight) : 0;
+  let reps = rx.reps;
+  for(let i=0;i<rx.sets;i++){
+    if(i>0){
+      const fade = i>=2 ? 1 : 0;                 // sets 3+ lose about a rep
+      reps = reps - fade;
+      if(reps < REP_LOW && w>0){                 // would drop out of range → back off ~5%
+        const drop=Math.max(step, snapWeight(w*0.05, type));
+        w = Math.max(step, snapWeight(w-drop, type));
+        reps = REP_LOW + 1;
+      }
+    }
+    out.push({reps:Math.max(REP_LOW-1,reps), weight:w});
+  }
+  return out;
+}
+
 /* greedy plate breakdown -> array of plate sizes for ONE side */
 function plateList(total, type){
   const base=loadBase(type);
@@ -2466,7 +2500,8 @@ function renderPrep(){
   const body=$('prepBody');
   if(!rt){ body.innerHTML=''; return; }
   const idx=exerciseIndex();
-  const tally={};       // plate size -> pairs needed across all stations
+  const tally={};       // plate size -> plates needed across all stations
+  const predicted={};   // exercise name -> predicted per-set loads
   let anyShort=false;
   let html='';
 
@@ -2478,31 +2513,51 @@ function renderPrep(){
       const rx=prescribe(rec, statsFor(rec));
       target = rx.weight!=null ? toLb(rx.weight) : 0;
       source = `advisor · ${rx.verdict.toLowerCase()}`;
+      predicted[ex.name]=predictSets(rx, ex.type||rec.type);
     } else {
       target = ex.startWeight||0;
       source = 'your saved starting weight';
+      predicted[ex.name]=predictSets({weight:dispW(target), reps:ex.targetReps||8, sets:3}, ex.type||'dumbbell');
     }
     const type=ex.type||'dumbbell';
     let inner='', note='';
 
     if(type==='barbell' || type==='dumbbell'){
-      const {plates:ps, short, side}=plateList(target, type);
-      const base=loadBase(type);
       if(target<=0.01){
         inner=`<span class="plate-pill dim">${type==='barbell'?'Empty bar':'Bare handles'}</span>`;
+        note='Nothing to load.';
       } else {
-        // group identical plates
-        const g={}; ps.forEach(p=>g[p]=(g[p]||0)+1);
-        inner=Object.keys(g).sort((a,b)=>b-a).map(p=>`<span class="plate-pill">${g[p]}× ${p} lb</span>`).join('')
-          + `<span class="muted" style="font-size:12px">per side</span>`;
-        // tally: each per-side plate needs a matching pair (both sides), and dumbbells come in twos
-        const mult = type==='dumbbell' ? 4 : 2;      // 2 sides × 2 dumbbells
-        Object.keys(g).forEach(p=>{ tally[p]=(tally[p]||0)+g[p]*mult; });
-        if(short>0.01){ anyShort=true; note=`<span class="prep-warn">Can't hit exactly — ${short} lb per side short with your plates. Nearest loadable: ${dispW(target-short*2)} lb.</span>`; }
+        const sets = predicted[ex.name] || [{reps:0, weight:target}];
+        const stationMax={};                     // most of each size needed at once here
+        let rows='';
+        sets.forEach((s,i)=>{
+          const {plates:ps, short}=plateList(s.weight, type);
+          const g={}; ps.forEach(p=>g[p]=(g[p]||0)+1);
+          Object.keys(g).forEach(p=>{ stationMax[p]=Math.max(stationMax[p]||0, g[p]); });
+          if(short>0.01) anyShort=true;
+          const pills=Object.keys(g).sort((a,b)=>b-a).map(p=>`<span class="plate-pill">${g[p]}× ${p}</span>`).join('')
+            || `<span class="plate-pill dim">bare</span>`;
+          rows+=`<div class="prep-set">
+            <span class="ps-n">${i+1}</span>
+            <span class="ps-w">${dispW(s.weight)} lb</span>
+            <span class="ps-p">${pills}</span>
+            <span class="ps-r">~${s.reps}</span>
+          </div>`;
+        });
+        const changes = new Set(sets.map(s=>s.weight)).size>1;
+        inner=`<div class="prep-sets">
+          <div class="prep-set head"><span class="ps-n">SET</span><span class="ps-w">WEIGHT</span><span class="ps-p">PER SIDE</span><span class="ps-r">REPS</span></div>
+          ${rows}</div>`;
+        // tally across the workout: 2 sides, and dumbbells come in pairs
+        const mult = type==='dumbbell' ? 4 : 2;
+        Object.keys(stationMax).forEach(p=>{ tally[p]=(tally[p]||0)+stationMax[p]*mult; });
+        const gather=Object.keys(stationMax).sort((a,b)=>b-a)
+          .map(p=>`${stationMax[p]*mult}× ${p} lb`).join(', ');
+        note = `<b>Bring to this station:</b> ${gather}${type==='dumbbell'?' (covers both dumbbells)':''}. `
+          + (changes ? 'Weight drops on later sets as fatigue builds — strip the marked plates between sets.'
+                     : 'Same load every set.')
+          + ` ${type==='barbell'?'The bar counts':'Handles count'} as zero.`;
       }
-      note = note || (type==='barbell'
-        ? `<b>${dispW(side)} lb of plates on each side</b> · bar counts as zero`
-        : `<b>${dispW(side)} lb on each end of both dumbbells</b> · handles count as zero`);
     } else if(type==='cable' || type==='machine'){
       inner=`<span class="plate-pill">Pin at ${dispW(target)} lb</span>`;
       note=`Stack machine — no plates to carry. If the stack can't hit ${dispW(target)} exactly, take the closest pin and note it.`;
