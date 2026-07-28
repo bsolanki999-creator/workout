@@ -1175,8 +1175,10 @@ function dataScore(db){                       // rough "how much is in here" mea
        + (db.cardio?.length||0)*3 + (db.body?.length||0)*3;
 }
 let saveT=null;
-function saveDB(){
+function saveDB(now, snapshot){
   DB.activeSession = active;
+  if(snapshot && hasLS){ try{ pushSnapshot(JSON.stringify(DB)); }catch(e){} }
+  if(now){ flushSave(); return; }
   clearTimeout(saveT);
   saveT=setTimeout(async ()=>{
     memStore.db = DB;
@@ -1519,7 +1521,7 @@ $('saveRoutineBtn').onclick=()=>{
   delete builder.isNew;
   const i=DB.routines.findIndex(r=>r.id===builder.id);
   if(i>=0) DB.routines[i]=builder; else DB.routines.push(builder);
-  saveDB();
+  saveDB(true, true);
   $('builderModal').classList.add('hidden');
   builder=null;
   renderHome();
@@ -1800,7 +1802,7 @@ function logSet(xi,repeat,isFinal){
     const nxt=setHistory(ex.name,ex.sets.length,1)[0];
     loggerState[xi]= nxt ? {reps:nxt.reps,weight:nxt.weight} : {reps,weight};
   }
-  saveDB(); renderSession();
+  saveDB(true); renderSession();
   if(isFinal){
     // last set of this exercise: no waiting — rest is already logged on the set itself
     stopRest(); stopPhaseAudio(); clearSndTimers();
@@ -1941,7 +1943,7 @@ $('saveCardioBtn').onclick=()=>{
   if(editingCardio){ Object.assign(editingCardio, payload); toast(`${activity} updated`); }
   else { DB.cardio.push({...payload, t:Date.now()}); toast(`${activity} saved — ${fmtClock(dur)}`); }
   editingCardio=null;
-  saveDB();
+  saveDB(true);
   $('cardioModal').classList.add('hidden');
   renderHistory(); renderHome();
 };
@@ -2030,7 +2032,7 @@ $('bmSaveBtn').onclick=()=>{
   if(bmPicData) entry.pic=bmPicData;
   DB.body.push(entry);
   if(entry.weight){ DB.settings.bw=entry.weight; }   // keep volume calc in sync
-  saveDB();
+  saveDB(true);
   toast('Measurements saved'+(entry.weight?' — bodyweight updated for volume stats':''));
   bmPicData=null;
   openBody();  // re-render with new entry as "previous"
@@ -2188,7 +2190,7 @@ function saveRopeSession(){
     notes:ropeRounds.map(r=>`R${r.n}: ${fmtClock(r.dur)}${r.jumps?` / ${r.jumps} jumps`:''}`).join(' · '),
     rounds:ropeRounds
   });
-  saveDB();
+  saveDB(true);
   $('ropeModal').classList.add('hidden');
   toast(`Jump rope saved — ${ropeRounds.length} rounds, ${fmtClock(total)}`);
   renderHome();
@@ -2805,7 +2807,7 @@ async function parkActiveSession(){
   active.exercises.forEach(e=>delete e.recNote);
   DB.sessions.push(active);
   const saved=active.group;
-  active=null; loggerState={}; stopRest(); saveDB();
+  active=null; loggerState={}; stopRest(); saveDB(true, true);
   toast(`"${saved}" saved to history`);
   return true;
 }
@@ -3246,7 +3248,7 @@ $('finishBtn').onclick=async ()=>{
     done=active;
     DB.sessions.push(active);
   }
-  active=null; loggerState={}; saveDB(); stopRest(); stopPhaseAudio();
+  active=null; loggerState={}; saveDB(true, true); stopRest(); stopPhaseAudio();
   if(done) showSummary(done); else show('history');
 };
 
@@ -3570,7 +3572,7 @@ $('backupBtn').onclick=()=>{
   a.href=URL.createObjectURL(new Blob([JSON.stringify(DB,null,1)],{type:'application/json'}));
   a.download=`setlog-backup-${new Date().toISOString().slice(0,10)}.json`;
   a.click();
-  DB.settings.lastBackup=Date.now(); saveDB();
+  DB.settings.lastBackup=Date.now(); saveDB(true, true);
   renderBackupStatus();
   toast('Backup downloaded — keep it somewhere safe');
 };
