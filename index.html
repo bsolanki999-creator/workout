@@ -261,6 +261,16 @@
   .rx-sub{text-align:center; font-size:12.5px; color:var(--ink-dim); margin-bottom:12px}
   .adv-why{font-size:13px; color:var(--ink-dim); line-height:1.6; border-top:1px solid var(--line); padding-top:11px}
   .adv-why b{color:var(--ink)}
+  .adv-model{
+    display:flex; gap:6px; flex-wrap:wrap; margin-top:11px; padding-top:10px; border-top:1px solid var(--line);
+  }
+  .adv-model span{
+    font-size:10.5px; font-weight:600; letter-spacing:.03em; color:var(--ink-dim);
+    background:var(--panel2); border:1px solid var(--line); border-radius:999px; padding:4px 9px;
+    font-variant-numeric:tabular-nums;
+  }
+  .adv-model .mq.good{color:var(--green); border-color:rgba(123,201,143,.3)}
+  .adv-model .mq.fair{color:var(--gold); border-color:rgba(233,180,92,.3)}
   .adv-sets{display:flex; gap:6px; margin-top:11px; flex-wrap:wrap}
   .adv-set{
     flex:1; min-width:64px; text-align:center; background:var(--panel2); border:1px solid var(--line);
@@ -2380,6 +2390,115 @@ $('statSearch').addEventListener('input',e=>{ statQuery=e.target.value.trim().to
 
 
 /* =========================================================
+   PERSONALIZED PERFORMANCE MODEL — fitted to YOUR logged data
+   1. Rep-decay constant k: how fast your reps fall as load rises.
+      (Epley assumes 30 for everyone; fitted here by finding the k that makes
+       your within-session 1RM estimates most consistent.)
+   2. Intra-session fatigue: your real average rep loss per set at fixed load.
+   3. Progression rate: trend in estimated 1RM per week.
+   4. Recovery response: which rest gap has historically produced your best sessions.
+========================================================= */
+function fitRepModel(rec){
+  /* Solve k directly from pairs of fresh top sets at DIFFERENT loads.
+     If both sets represent the same capacity:  w1(1+r1/k) = w2(1+r2/k)
+     →  k = (w2·r2 − w1·r1) / (w1 − w2)
+     Only pairs within 21 days are used so long-run progression doesn't distort the shape,
+     and only first sets, so intra-session fatigue doesn't either. Median resists outliers. */
+  const firsts=rec.sessions
+    .map(s=>({t:s.t, x:s.sets[0]}))
+    .filter(o=>o.x && o.x.weight>0 && o.x.reps>0 && o.x.reps<=15);
+  const ks=[];
+  for(let i=0;i<firsts.length;i++){
+    for(let j=i+1;j<firsts.length;j++){
+      const a=firsts[i], b=firsts[j];
+      if(Math.abs(a.t-b.t) > 21*864e5) continue;
+      const w1=a.x.weight, r1=a.x.reps, w2=b.x.weight, r2=b.x.reps;
+      if(Math.abs(w1-w2) < 0.5) continue;                  // need a real load difference
+      const k=(w2*r2 - w1*r1)/(w1 - w2);
+      if(k>=15 && k<=60) ks.push(k);
+    }
+  }
+  if(ks.length<2) return {k:30, fit:ks.length, quality:'default'};
+  ks.sort((a,b)=>a-b);
+  const med=ks.length%2 ? ks[(ks.length-1)/2] : (ks[ks.length/2-1]+ks[ks.length/2])/2;
+  return {k:Math.round(Math.min(45,Math.max(18,med))), fit:ks.length, quality:ks.length>=6?'good':'fair'};
+}
+function fitFatigue(rec){
+  let drops=[], pcts=[];
+  rec.sessions.forEach(s=>{
+    const sets=s.sets;
+    if(sets.length<2) return;
+    for(let i=1;i<sets.length;i++){
+      if(sets[i].weight===sets[0].weight && sets[0].reps>0){
+        drops.push((sets[0].reps-sets[i].reps)/i);
+        pcts.push((sets[0].reps-sets[i].reps)/sets[0].reps/i);
+      }
+    }
+  });
+  if(!drops.length) return {perSet:1, pct:0.12, n:0};
+  const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  return {perSet:Math.max(0,Math.round(avg(drops)*100)/100), pct:Math.max(0,avg(pcts)), n:drops.length};
+}
+function fitTrend(rec,k){
+  const pts=rec.sessions.map(s=>{
+    const b=bestSet(s.sets);
+    return {t:s.t, v:b.weight>0 ? b.weight*(1+Math.min(b.reps,15)/k) : b.reps};
+  });
+  if(pts.length<2) return {perWeek:0, n:pts.length};
+  const t0=pts[0].t;
+  const xs=pts.map(p=>(p.t-t0)/(7*864e5)), ys=pts.map(p=>p.v);
+  const mx=xs.reduce((a,b)=>a+b,0)/xs.length, my=ys.reduce((a,b)=>a+b,0)/ys.length;
+  let num=0, den=0;
+  xs.forEach((x,i)=>{ num+=(x-mx)*(ys[i]-my); den+=(x-mx)**2; });
+  return {perWeek: den? Math.round(num/den*10)/10 : 0, n:pts.length};
+}
+function fitRecovery(rec){
+  const S=rec.sessions, buckets={};
+  for(let i=1;i<S.length;i++){
+    const gap=Math.round((S[i].t-S[i-1].t)/864e5);
+    const b=gap<=1?'1 day':gap<=3?'2-3 days':gap<=5?'4-5 days':gap<=8?'6-8 days':'9+ days';
+    const prev=bestSet(S[i-1].sets), cur=bestSet(S[i].sets);
+    if(!prev.reps) continue;
+    const delta = prev.weight>0
+      ? (cur.weight*(1+cur.reps/30))/(prev.weight*(1+prev.reps/30))-1
+      : cur.reps/prev.reps-1;
+    (buckets[b]=buckets[b]||[]).push(delta);
+  }
+  let best=null;
+  Object.entries(buckets).forEach(([b,arr])=>{
+    const m=arr.reduce((a,x)=>a+x,0)/arr.length;
+    if(!best || m>best.mean) best={gap:b, mean:m, n:arr.length};
+  });
+  return best;
+}
+function predictReps(load, oneRM, k, setIdx, fat){
+  if(load<=0 || !oneRM) return null;
+  const ratio=Math.min(0.99, load/oneRM);
+  let reps=k*(1/ratio-1);
+  reps -= (fat.perSet||1)*setIdx;
+  return Math.max(1, Math.round(reps));
+}
+function loadForReps(target, oneRM, k, setIdx, fat){
+  const effective=target + (fat.perSet||1)*setIdx;
+  return oneRM/(1+effective/k);
+}
+function personalModel(rec){
+  const m=fitRepModel(rec);
+  const fat=fitFatigue(rec);
+  const trend=fitTrend(rec,m.k);
+  const recov=fitRecovery(rec);
+  let oneRM=0;
+  rec.sessions.slice(-3).forEach(s=>s.sets.forEach(x=>{
+    if(x.weight>0 && x.reps>0){
+      let est=x.weight*(1+Math.min(x.reps,15)/m.k);
+      if(x.rpe) est *= 1+(10-x.rpe)*0.03;
+      oneRM=Math.max(oneRM,est);
+    }
+  }));
+  return {k:m.k, quality:m.quality, fat, trend, recov, oneRM};
+}
+
+/* =========================================================
    ADVISOR — evidence-based prescription for the next session
    Principles applied:
    • Double progression: earn the top of the rep range before adding load
@@ -2436,14 +2555,23 @@ function renderAdvisor(){
       <div class="adv-sets">
         ${rx.plan.map((p,i)=>`<div class="adv-set"><b>${p.reps}×${p.weight!=null?p.weight:'BW'}</b><span>Set ${i+1}</span></div>`).join('')}
       </div>
-      <div class="adv-why">${rx.why}</div>`;
+      <div class="adv-why">${rx.why}</div>
+      ${rx.model?`<div class="adv-model">
+        <span>1RM ~${rx.model.oneRM||'—'} lb</span>
+        <span>curve k=${rx.model.k}</span>
+        <span>fatigue ${rx.model.fatigue}/set</span>
+        <span>${rx.model.trend>0?'+':''}${rx.model.trend} lb/wk</span>
+        <span class="mq ${rx.model.quality}">${rx.model.quality==='good'?'model: fitted':rx.model.quality==='fair'?'model: learning':'model: default'}</span>
+      </div>`:''}`;
     body.appendChild(card);
   });
 }
 function prescribe(rec, st){
   const type=rec.type||'dumbbell';
-  const step=plateStep(type);
-  const last=st.last;                       // last session's top set
+  const step=incFor(type);
+  const M=personalModel(rec);
+  const k=M.k, fat=M.fat;
+  const last=st.last;
   const lastSession=st.S[st.S.length-1];
   const rpes=lastSession.sets.map(s=>s.rpe).filter(Boolean);
   const avgRpe=rpes.length?rpes.reduce((a,b)=>a+b,0)/rpes.length:null;
@@ -2451,50 +2579,83 @@ function prescribe(rec, st){
   const setCount=Math.max(3, Math.min(5, Math.round(st.S.reduce((a,s)=>a+s.sets.length,0)/st.S.length)));
   const rest=(lastSession.ex && lastSession.ex.rest) || 90;
   const bw=!last.weight;
-  let weight=last.weight, reps=last.reps, verdict, cls, why;
+  const daysOff=daysAgo(lastSession.t);
+  let verdict, cls, why, weight=last.weight, reps=last.reps;
+
+  // readiness multiplier from your own recovery history + detraining decay
+  let readiness=1;
+  if(daysOff<=1) readiness=0.97;
+  else if(daysOff>=10) readiness=1-Math.min(0.06,(daysOff-9)*0.008);
+  const trendTxt = M.trend.perWeek
+    ? `Your trend is <b>${M.trend.perWeek>0?'+':''}${M.trend.perWeek} lb/week</b> of estimated 1RM.` : '';
+  const modelTxt = M.quality==='default'
+    ? 'Using standard strength curves until you log multi-set sessions.'
+    : `Fitted to your data: rep-decay k=<b>${k}</b>${fat.n?`, fatigue <b>${fat.perSet} rep${fat.perSet===1?'':'s'}/set</b>`:''}${M.quality==='fair'?' (still learning)':''}.`;
 
   if(st.S.length===1 && last.reps>=REP_LOW && last.reps<=REP_HIGH){
     verdict='Baseline'; cls='v-new';
     reps=Math.min(REP_HIGH,last.reps+1);
-    why=`Only one session on record and it landed in the ${REP_LOW}–${REP_HIGH} zone. Repeat <b>${dispW(last.weight)||'bodyweight'}</b> and chase <b>${reps} reps</b> to confirm it's a true working weight before adding load.`;
+    why=`One session on record, landing in the ${REP_LOW}–${REP_HIGH} zone. Repeat <b>${dispW(last.weight)||'bodyweight'}</b> and chase <b>${reps} reps</b> to confirm it's a true working load. ${modelTxt}`;
   }
   else if(st.stalled>=2 || st.repSlide){
-    // 3+ sessions same load, or reps falling: planned deload then re-climb
     verdict='Deload'; cls='v-back';
-    weight = bw ? null : Math.max(loadBase(type), snapWeight(last.weight*0.92, type));
+    weight = bw ? null : Math.max(step, snapWeight(last.weight*0.92, type));
     reps=REP_HIGH;
-    why=`You've held <b>${dispW(last.weight)} lb</b> for ${st.stalled+1} sessions${st.repSlide?' and reps are slipping':''} — a stall usually means accumulated fatigue, not a hard ceiling. Drop ~8% to <b>${weight} lb</b>, hit ${REP_HIGH} clean reps, then climb back. Lifters who deload at a plateau typically pass their old best within 2–3 sessions.`;
+    why=`Held <b>${dispW(last.weight)} lb</b> for ${st.stalled+1} sessions${st.repSlide?' with reps slipping':''}. At your fitted curve that load should give ~${predictReps(last.weight,M.oneRM,k,0,fat)} reps, so the ceiling is fatigue rather than capacity. Cut ~8% to <b>${weight} lb</b>, own ${REP_HIGH} reps, then climb. ${trendTxt}`;
   }
-  else if(last.reps>REP_HIGH || (rir!=null && rir>=3)){
-    verdict='Add load'; cls='v-push';
-    // the further past the range, the bigger the jump: use the 1RM curve, floor at one plate step
-    const over=Math.max(0,last.reps-REP_HIGH);
-    const byCurve = e1rmSet(last.weight,last.reps)/(1+REP_TARGET/30);
-    const pct=Math.min(0.10, 0.03*Math.max(1,over) + (rir!=null&&rir>=3?0.02:0));
-    const raw=Math.max(byCurve, last.weight*(1+pct), last.weight+step);
-    weight = bw ? null : snapWeight(raw, type);
-    reps=REP_LOW;
-    why=`Last time you got <b>${last.reps} reps</b>${avgRpe?` at RPE ${avgRpe.toFixed(1)} (~${rir.toFixed(0)} in reserve)`:''}${last.reps>REP_HIGH?` — past the top of the ${REP_LOW}–${REP_HIGH} range`:' — the set had room left'}. Double progression says earn the top of the range, then add load: go to <b>${bw?'added resistance':weight+' lb'}</b> and expect ${REP_LOW}–${REP_LOW+1} reps at first.${!bw&&perSide(weight,type)?` Per side: ${perSide(weight,type)}.`:''}`;
-  }
-  else if(last.reps<REP_LOW){
-    verdict='Reduce'; cls='v-back';
-    weight = bw ? null : Math.max(loadBase(type), snapWeight(e1rmSet(last.weight,last.reps)/(1+REP_TARGET/30), type));
-    reps=REP_TARGET;
-    why=`<b>${last.reps} reps</b> is under the ${REP_LOW}–${REP_HIGH} zone, so the load is above your ~81%-of-1RM target. Your estimated 1RM is <b>${Math.round(st.e1)} lb</b>; the weight that should give ~7 reps is <b>${weight} lb</b>. Volume in the growth range beats grinding singles.`;
+  else if(bw){
+    // bodyweight: progress reps, then added load
+    if(last.reps>REP_HIGH){
+      verdict='Add load'; cls='v-push'; weight=null; reps=REP_LOW;
+      why=`<b>${last.reps} reps</b> is past the range. Add ${incFor('bodyweight')} lb on a belt and expect about ${REP_LOW}–${REP_LOW+1} reps. ${modelTxt}`;
+    } else {
+      verdict='Earn the top'; cls='v-hold'; reps=Math.min(REP_HIGH,last.reps+1);
+      why=`<b>${last.reps} reps</b> bodyweight — chase <b>${reps}</b> before adding load. ${modelTxt}`;
+    }
   }
   else {
-    verdict='Earn the top'; cls='v-hold';
-    weight = bw ? null : last.weight;
-    reps=Math.min(REP_HIGH,last.reps+1);
-    why=`<b>${last.reps} reps</b> sits in the ${REP_LOW}–${REP_HIGH} zone${avgRpe?` at RPE ${avgRpe.toFixed(1)}`:''} — hold <b>${bw?'bodyweight':dispW(last.weight)+' lb'}</b> and chase <b>${reps} reps</b>. Add load only once you own ${REP_HIGH}; that's the double-progression rule that keeps every jump earned rather than forced.`;
+    // model-driven target: the load predicted to land mid-range on set 1
+    const oneRM = M.oneRM || e1rmSet(last.weight,last.reps);
+    const projected = predictReps(last.weight, oneRM, k, 0, fat);
+    let target = loadForReps(REP_TARGET, oneRM*readiness, k, 0, fat);
+    target = Math.min(last.weight*1.12, Math.max(last.weight*0.88, target));
+    target = snapWeight(target, type);
+
+    if(last.reps>REP_HIGH || (rir!=null && rir>=3)){
+      verdict='Add load'; cls='v-push';
+      if(target<=last.weight) target=snapWeight(last.weight+step,type);
+      weight=target; reps=predictReps(target,oneRM,k,0,fat)||REP_LOW;
+      why=`Last time: <b>${last.reps} reps @ ${dispW(last.weight)} lb</b>${avgRpe?` (RPE ${avgRpe.toFixed(1)}, ~${rir.toFixed(0)} in reserve)`:''}. ${modelTxt} That puts your working max near <b>${Math.round(oneRM)} lb</b>, so <b>${dispW(target)} lb</b> should land you at <b>~${reps} reps</b> — back inside ${REP_LOW}–${REP_HIGH}. ${trendTxt}`;
+    }
+    else if(last.reps<REP_LOW){
+      verdict='Reduce'; cls='v-back';
+      if(target>=last.weight) target=Math.max(step,snapWeight(last.weight-step,type));
+      weight=target; reps=predictReps(target,oneRM,k,0,fat)||REP_TARGET;
+      why=`<b>${last.reps} reps</b> is under the zone — that load sits above your ~${Math.round(oneRM)} lb working max for this range. ${modelTxt} <b>${dispW(target)} lb</b> projects to <b>~${reps} reps</b>. Volume inside ${REP_LOW}–${REP_HIGH} builds more than grinding heavy singles.`;
+    }
+    else {
+      verdict='Earn the top'; cls='v-hold';
+      weight=last.weight; reps=Math.min(REP_HIGH,last.reps+1);
+      why=`<b>${last.reps} reps @ ${dispW(last.weight)} lb</b>${avgRpe?` at RPE ${avgRpe.toFixed(1)}`:''} — ${Math.round(last.weight/oneRM*100)}% of your ~${Math.round(oneRM)} lb max, squarely in range. Hold and chase <b>${reps}</b>; the model says you have it${projected?` (projects ${projected})`:''}. ${trendTxt}`;
+    }
   }
-  // per-set plan with intra-session fatigue (~1 rep lost per set after the first two)
-  const plan=[];
+
+  if(daysOff>=10) why += ` <b>${daysOff} days off</b> — the target is trimmed slightly for detraining.`;
+  else if(daysOff<=1) why += ` Trained <b>${daysOff===0?'today':'yesterday'}</b> — expect a little residual fatigue.`;
+  if(M.recov && M.recov.n>=2) why += ` Historically your best sessions follow <b>${M.recov.gap}</b> of rest.`;
+
+  // per-set plan from YOUR fatigue curve, dropping load when a set would fall out of range
+  const plan=[]; let w = weight==null?null:weight;
   for(let i=0;i<setCount;i++){
-    const drop = i<=1 ? 0 : Math.min(2, i-1);
-    plan.push({reps:Math.max(REP_LOW-1, reps-drop), weight: weight==null?null:dispW(weight)});
+    let r = w!=null && M.oneRM ? predictReps(w, M.oneRM*readiness, k, i, fat) : Math.max(REP_LOW-1, reps-(i>=2?i-1:0));
+    if(w!=null && r<REP_LOW-1 && w>step){
+      w=Math.max(step, snapWeight(w-Math.max(step,w*0.05), type));
+      r=predictReps(w, M.oneRM*readiness, k, i, fat);
+    }
+    plan.push({reps:Math.max(1,r||reps), weight:w==null?null:dispW(w)});
   }
-  return {verdict, cls, weight: weight==null?null:dispW(weight), reps, sets:setCount, rest, plan, why};
+  return {verdict, cls, weight: weight==null?null:dispW(weight), reps, sets:setCount, rest, plan, why,
+          model:{k, fatigue:fat.perSet, oneRM:Math.round(M.oneRM), trend:M.trend.perWeek, quality:M.quality}};
 }
 
 
@@ -2575,7 +2736,9 @@ function renderPrep(){
       const rx=prescribe(rec, statsFor(rec));
       target = rx.weight!=null ? toLb(rx.weight) : 0;
       source = `advisor · ${rx.verdict.toLowerCase()}`;
-      predicted[ex.name]=predictSets(rx, ex.type||rec.type);
+      predicted[ex.name]= (rx.plan && rx.plan.length)
+        ? rx.plan.map(p=>({reps:p.reps, weight:p.weight!=null?toLb(p.weight):0}))
+        : predictSets(rx, ex.type||rec.type);
     } else {
       target = ex.startWeight||0;
       source = 'your saved starting weight';
