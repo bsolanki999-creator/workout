@@ -133,6 +133,20 @@
   .dash .lbl{font-size:10px; font-weight:500; color:var(--ink-dim); letter-spacing:.08em; text-transform:uppercase; margin-top:3px}
 
   /* routine cards */
+  .hero{
+    border:1px solid rgba(233,180,92,.3);
+    box-shadow:0 4px 24px rgba(0,0,0,.28), inset 0 1px 30px rgba(233,180,92,.07);
+  }
+  .hero-name{font-family:var(--serif); font-weight:600; font-size:30px; line-height:1.1; letter-spacing:.01em}
+  .hero-why{font-size:13px; color:var(--ink-dim); margin-top:7px; line-height:1.55}
+  .hero-why b{color:var(--gold)}
+  .alt-row{
+    display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); cursor:pointer;
+  }
+  .alt-row:last-child{border-bottom:none}
+  .alt-name{flex:1; min-width:0; font-weight:600; font-size:14.5px}
+  .alt-days{font-size:12px; color:var(--ink-dim); font-variant-numeric:tabular-nums}
+  .rec-none{color:var(--ink-ghost); font-size:13px}
   .routine-card{cursor:pointer; display:flex; align-items:center; gap:14px; padding:16px; transition:border-color .15s}
   .routine-card:hover{border-color:rgba(233,180,92,.3)}
   .mono{
@@ -428,11 +442,16 @@
   #timerNext{color:var(--ink-dim); font-size:15px}
   @media (prefers-reduced-motion:reduce){.ring-fg{transition:none}}
   #miniTimer{
-    position:fixed; top:74px; right:18px; z-index:50;
+    position:fixed; top:66px; left:50%; transform:translateX(-50%); z-index:50;
     background:var(--grad); border:none; color:#1B1408; box-shadow:var(--glow);
-    border-radius:999px; padding:10px 17px; font-family:var(--font); font-weight:700; font-size:17px;
-    font-variant-numeric:tabular-nums; cursor:pointer;
+    border-radius:999px; padding:9px 20px; font-family:var(--font); font-weight:700; font-size:16px;
+    font-variant-numeric:tabular-nums; cursor:pointer; white-space:nowrap;
+    display:inline-flex; align-items:center; gap:8px;
   }
+  #miniTimer:active{transform:translateX(-50%) scale(.96)}
+  #miniTimer .mt-lbl{font-size:10.5px; font-weight:700; letter-spacing:.12em; opacity:.75}
+  /* push session content clear of the floating pill so nothing hides behind it */
+  body.resting #view-session{padding-top:34px}
 
   /* history */
   .hist-sess{cursor:pointer}
@@ -469,6 +488,17 @@
 <main>
   <!-- HOME -->
   <section id="view-home">
+    <div class="card hero" id="todayCard">
+      <div class="eyebrow" style="margin-bottom:6px">Train today</div>
+      <div class="hero-name" id="todayName">—</div>
+      <div class="hero-why" id="todayWhy"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" id="todayStart" style="flex:1">Start</button>
+        <button class="btn ghost" id="todayAlt">Other options</button>
+      </div>
+      <div id="todayAltList" class="hidden" style="margin-top:12px"></div>
+    </div>
+
     <div class="dash">
       <div class="tile t1"><span class="ic"><svg class="ic-svg " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span><span class="num" id="dashStreak">0</span><span class="lbl">Week streak</span></div>
       <div class="tile t2"><span class="ic"><svg class="ic-svg " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg></span><span class="num" id="dashWeekVol">0</span><span class="lbl" id="dashWeekVolLbl">Volume · 7d</span></div>
@@ -477,7 +507,7 @@
 
     <div class="card hidden" id="nudgeCard" style="padding:12px 16px; font-size:13.5px"></div>
     <div class="card" id="recoveryCard" style="padding:14px 16px">
-      <div class="eyebrow">Last trained</div>
+      <div class="eyebrow">Last trained · past 2 weeks</div>
       <div id="recoveryList"></div>
     </div>
 
@@ -1326,7 +1356,7 @@ function show(view){
   // a running rest timer shouldn't trap navigation — drop it to the mini pill
   if(!$('timerOverlay').classList.contains('hidden')){
     $('timerOverlay').classList.add('hidden');
-    if(restInt) $('miniTimer').classList.remove('hidden');
+    if(restInt){ $('miniTimer').classList.remove('hidden'); document.body.classList.add('resting'); }
   }
   ['home','session','stats','advisor','history'].forEach(v=>{
     $('view-'+v).classList.toggle('hidden', v!==view);
@@ -1407,7 +1437,7 @@ function renderHome(){
     list.appendChild(card);
   });
 
-  renderRecovery(); renderNudge();
+  renderToday(); renderRecovery(); renderNudge();
   // PR feed
   const prs=[];
   finished().forEach(s=>s.exercises.forEach(e=>e.sets.forEach(st=>{ if(st.pr) prs.push({t:st.t||s.start,name:e.name,st}); })));
@@ -3003,21 +3033,31 @@ function showSummary(s){
 $('sumClose').onclick=()=>{ $('summaryModal').classList.add('hidden'); show('history'); };
 
 /* ---------- last trained (recovery awareness) ---------- */
-function renderRecovery(){
-  const el=$('recoveryList'); if(!el) return;
+function lastTrainedMap(){
   const map={};
   finished().forEach(s=>{
     const key = s.lagging ? `${s.lagging.part} (${s.lagging.side})` : s.group;
-    if(!map[key] || s.start>map[key]) map[key]=s.start;
+    if(!map[key] || s.start>map[key].t) map[key]={t:s.start, sets:s.exercises.reduce((n,e)=>n+e.sets.length,0), kind:'lift'};
   });
-  DB.cardio.forEach(c=>{ if(!map[c.activity] || c.t>map[c.activity]) map[c.activity]=c.t; });
-  const rows=Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  if(!rows.length){ el.innerHTML='<div class="muted">Nothing logged yet — your trained areas will show here with days since.</div>'; return; }
-  el.innerHTML=rows.map(([name,ts])=>{
-    const days=daysAgo(ts);
+  DB.cardio.forEach(c=>{
+    if(!map[c.activity] || c.t>map[c.activity].t) map[c.activity]={t:c.t, sets:0, kind:'cardio'};
+  });
+  return map;
+}
+function renderRecovery(){
+  const el=$('recoveryList'); if(!el) return;
+  const map=lastTrainedMap();
+  const cutoff=Date.now()-14*864e5;
+  const rows=Object.entries(map).filter(([,v])=>v.t>=cutoff).sort((a,b)=>b[1].t-a[1].t);
+  if(!rows.length){
+    el.innerHTML='<div class="rec-none">Nothing logged in the past 2 weeks. Anything you train will appear here with days since.</div>';
+    return;
+  }
+  el.innerHTML=rows.map(([name,v])=>{
+    const days=daysAgo(v.t);
     const label = days===0?'today' : days===1?'yesterday' : `${days} days`;
     const stale = days>=7;
-    const pct=Math.max(6, Math.min(100, (days/7)*100));
+    const pct=Math.max(6, Math.min(100, (days/14)*100));
     return `<div class="rec-row">
       <span class="rec-name">${name}</span>
       <span class="rec-bar"><i style="width:${pct}%"></i></span>
@@ -3025,6 +3065,64 @@ function renderRecovery(){
     </div>`;
   }).join('');
 }
+
+/* ---------- what to train today ----------
+   Ranks by how overdue each workout is. Because it is staleness-based, skipping a day
+   never changes the pick — the same workout simply becomes more overdue. */
+function trainingCandidates(){
+  const map=lastTrainedMap();
+  const out=[];
+  DB.routines.forEach(r=>{
+    const last=finished().filter(s=>s.routineId===r.id).sort((a,b)=>b.start-a.start)[0];
+    const t=last?last.start:0;
+    out.push({name:r.name, routine:r, t, days:t?daysAgo(t):999, never:!t});
+  });
+  // muscle groups trained outside saved workouts (quick lifts, focus sessions)
+  Object.entries(map).forEach(([name,v])=>{
+    if(v.kind!=='lift') return;
+    if(out.some(o=>o.name.toLowerCase()===name.toLowerCase())) return;
+    out.push({name, routine:null, t:v.t, days:daysAgo(v.t), never:false});
+  });
+  return out.sort((a,b)=>b.days-a.days);
+}
+function renderToday(){
+  const card=$('todayCard'); if(!card) return;
+  const cands=trainingCandidates();
+  if(!cands.length){
+    $('todayName').textContent='Create your first workout';
+    $('todayWhy').textContent='Build a routine below and this will tell you what to train each day.';
+    $('todayStart').classList.add('hidden'); $('todayAlt').classList.add('hidden');
+    return;
+  }
+  $('todayStart').classList.remove('hidden'); $('todayAlt').classList.remove('hidden');
+  const pick=cands[0];
+  $('todayName').textContent=pick.name;
+  let why;
+  if(pick.never) why=`You have never logged <b>${pick.name}</b> — best place to start.`;
+  else if(pick.days===0) why=`Everything is fresh — you trained <b>${pick.name}</b> today already. A rest day or cardio is a fine call.`;
+  else if(pick.days===1) why=`Most rested option, but only <b>1 day</b> since. If it still feels worked, take another day.`;
+  else if(pick.days<=4) why=`<b>${pick.days} days</b> since you trained it — inside the 48–72h window where muscle is rebuilt and ready.`;
+  else if(pick.days<=9) why=`<b>${pick.days} days</b> since — the longest gap of anything you train. Due today.`;
+  else why=`<b>${pick.days} days</b> since — well overdue. Ease back in near the lower end of the advisor's numbers.`;
+  $('todayWhy').innerHTML=why;
+  $('todayStart').onclick=()=>{
+    if(pick.routine) startFromRoutine(pick.routine);
+    else { toast(`Start ${pick.name} from your workouts below, or use Quick lift`); }
+  };
+  // alternatives
+  const list=$('todayAltList');
+  list.innerHTML=cands.slice(1,6).map((c,i)=>`
+    <div class="alt-row" data-alt="${i+1}">
+      <span class="alt-name">${c.name}</span>
+      <span class="alt-days">${c.never?'never trained':c.days===0?'today':c.days===1?'yesterday':c.days+' days'}</span>
+    </div>`).join('') || '<div class="rec-none">No other workouts yet.</div>';
+  list.querySelectorAll('[data-alt]').forEach(r=>r.onclick=()=>{
+    const c=cands[+r.dataset.alt];
+    if(c && c.routine) startFromRoutine(c.routine);
+    else toast(`Start ${c.name} from your workouts below`);
+  });
+}
+$('todayAlt').onclick=()=>$('todayAltList').classList.toggle('hidden');
 
 /* ---------- backup nudge ---------- */
 function renderNudge(){
@@ -3594,7 +3692,8 @@ $('restCustomSet').onclick=()=>setRestTo(parseInt($('restCustomSec').value)||0);
 
 function drawTimer(){
   const txt=fmtClock(Math.max(0,restLeft));
-  $('timerBig').textContent=txt; $('miniTimer').textContent=txt;
+  $('timerBig').textContent=txt;
+  $('miniTimer').innerHTML=`<span class="mt-lbl">REST</span>${txt}`;
   const fg=$('ringFg');
   fg.style.strokeDashoffset=RING_C*(1-restLeft/restTotal);
   fg.classList.toggle('ending',restLeft<=5);
@@ -3609,9 +3708,10 @@ function finishRestNaturally(){
   if(navigator.vibrate) navigator.vibrate([300,100,300,100,500]);
   toast('Rest over — go!');
   clearTimeout(restHideT);
-  restHideT=setTimeout(()=>{                     // audio (2nd sound) plays through
+  restHideT=setTimeout(()=>{                     // audio plays through
     $('timerOverlay').classList.add('hidden');
     $('miniTimer').classList.add('hidden');
+    document.body.classList.remove('resting');
   }, 2200);
 }
 function stopRest(){
@@ -3626,6 +3726,7 @@ function stopRest(){
   restStartedAt=0;
   $('timerOverlay').classList.add('hidden');
   $('miniTimer').classList.add('hidden');
+  document.body.classList.remove('resting');
 }
 function stopRestSilent(){ stopPhaseAudio(); stopRest(); }
 $('timerSkip').onclick=()=>{ pendingSkip=true; stopPhaseAudio(); stopRest(); toast('Rest skipped'); };
@@ -3633,8 +3734,15 @@ $('timerAdd').onclick=()=>{
   restLeft+=30; restTotal=Math.max(restTotal,restLeft);
   restEndAt+=30000; scheduleRestAudio(); drawTimer();
 };
-$('timerHide').onclick=()=>{ $('timerOverlay').classList.add('hidden'); if(restInt) $('miniTimer').classList.remove('hidden'); };
-$('miniTimer').onclick=()=>{ $('miniTimer').classList.add('hidden'); $('timerOverlay').classList.remove('hidden'); };
+$('timerHide').onclick=()=>{
+  $('timerOverlay').classList.add('hidden');
+  if(restInt){ $('miniTimer').classList.remove('hidden'); document.body.classList.add('resting'); }
+};
+$('miniTimer').onclick=()=>{
+  $('miniTimer').classList.add('hidden');
+  document.body.classList.remove('resting');
+  $('timerOverlay').classList.remove('hidden');
+};
 
 /* ---------- HISTORY ---------- */
 function renderHistory(){
