@@ -147,6 +147,14 @@
   .alt-name{flex:1; min-width:0; font-weight:600; font-size:14.5px}
   .alt-days{font-size:12px; color:var(--ink-dim); font-variant-numeric:tabular-nums}
   .rec-none{color:var(--ink-ghost); font-size:13px}
+  .rd-row{display:flex; align-items:center; gap:10px; padding:5px 0}
+  .rd-lbl{width:74px; flex:none; font-size:13px; color:var(--ink-dim)}
+  .rd-opts{flex:1; display:flex; gap:5px}
+  .rd-o{
+    flex:1; background:var(--panel2); border:1px solid var(--line); color:var(--ink-dim);
+    border-radius:9px; padding:7px 4px; font-family:var(--font); font-size:12px; font-weight:600; cursor:pointer;
+  }
+  .rd-o.sel{background:var(--grad); color:#1B1408; border-color:transparent}
   .coach-msg{font-size:13px; color:var(--ink-dim); line-height:1.6; padding:8px 0; border-bottom:1px solid var(--line)}
   .coach-msg:last-child{border-bottom:none}
   .wv-row{display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13.5px}
@@ -271,6 +279,38 @@
   .apply-rx small{font-family:var(--font); font-size:11px; font-weight:600; color:var(--ink-dim); letter-spacing:.06em}
   .apply-why{font-size:12.5px; color:var(--ink-dim); line-height:1.55; margin-top:6px}
   .apply-why b{color:var(--ink)}
+  .seg{display:flex; gap:3px; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:3px; margin-bottom:12px}
+  .seg button{
+    flex:1; background:none; border:none; border-radius:9px; color:var(--ink-dim);
+    font-family:var(--font); font-weight:600; font-size:13.5px; padding:9px 0; cursor:pointer;
+  }
+  .seg button.sel{background:var(--grad); color:#1B1408}
+  .fc-card{padding:16px}
+  .fc-head{display:flex; align-items:baseline; gap:8px; margin-bottom:10px}
+  .fc-name{flex:1; font-family:var(--serif); font-weight:600; font-size:18px}
+  .fc-conf{font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:3px 8px; border-radius:999px; background:var(--panel2); color:var(--ink-dim)}
+  .fc-conf.hi{color:var(--green); background:rgba(123,201,143,.13)}
+  .fc-conf.mid{color:var(--gold); background:var(--gold-soft)}
+  .fc-band{display:flex; gap:6px; margin:4px 0 10px}
+  .fc-b{flex:1; text-align:center; border-radius:12px; padding:10px 4px; border:1px solid var(--line); background:var(--panel2)}
+  .fc-b.likely{border-color:var(--gold); background:var(--gold-soft)}
+  .fc-b b{display:block; font-family:var(--serif); font-weight:600; font-size:17px; font-variant-numeric:tabular-nums}
+  .fc-b span{font-size:9.5px; color:var(--ink-dim); letter-spacing:.05em; text-transform:uppercase}
+  .fc-why{font-size:12.5px; color:var(--ink-dim); line-height:1.6; border-top:1px solid var(--line); padding-top:10px}
+  .fc-why b{color:var(--ink)}
+  .cmp-row{display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--line)}
+  .cmp-row:last-of-type{border-bottom:none}
+  .cmp-n{flex:1; min-width:0; font-weight:600; font-size:14px}
+  .cmp-v{width:82px; flex:none; text-align:right; font-family:var(--serif); font-weight:600; font-size:15px; font-variant-numeric:tabular-nums}
+  .cmp-a{color:var(--gold)} .cmp-b{color:var(--teal, #7BC8D8)}
+  .cmp-head{display:flex; gap:8px; padding-bottom:6px; border-bottom:1px solid var(--hairline); font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim)}
+  .cmp-head .cmp-n{font-weight:700}
+  .cmp-blend{
+    display:flex; align-items:baseline; gap:7px; padding:2px 0 9px 0; font-size:12px; color:var(--ink-dim);
+    border-bottom:1px solid var(--line);
+  }
+  .cmp-blend b{font-family:var(--serif); font-size:15px; color:var(--green)}
+  .cmp-verdict{font-size:12.5px; color:var(--ink-dim); margin-top:10px; line-height:1.55}
   .adv-card{padding:16px}
   .adv-head{display:flex; align-items:flex-start; gap:10px}
   .adv-name{font-family:var(--serif); font-weight:600; font-size:18px; flex:1; min-width:0}
@@ -581,6 +621,17 @@
     </div>
 
     <div class="card hidden" id="nudgeCard" style="padding:12px 16px; font-size:13.5px"></div>
+    <div class="card hidden" id="readyCard" style="padding:14px 16px">
+      <div class="eyebrow">Readiness · optional</div>
+      <div class="muted" style="font-size:12.5px; margin-bottom:10px">Ten seconds now scales today's targets. Skip it and nothing changes.</div>
+      <div id="readyRows"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn small" id="readySave" style="flex:1">Save check-in</button>
+        <button class="btn ghost small" id="readySkip">Not today</button>
+      </div>
+    </div>
+    <button class="btn ghost block hidden" id="readyOpen" style="margin-bottom:14px">Readiness check-in</button>
+
     <div class="card hidden" id="coachCard" style="padding:14px 16px; border-color:rgba(233,180,92,.3)">
       <div class="eyebrow">Coach</div>
       <div id="coachList"></div>
@@ -658,6 +709,11 @@
 
   <!-- ADVISOR -->
   <section id="view-advisor" class="hidden">
+    <div class="seg" id="advMode">
+      <button data-mode="coach" class="sel">Coach</button>
+      <button data-mode="forecast">Forecast</button>
+      <button data-mode="compare">Compare</button>
+    </div>
     <div class="card" style="padding:14px 16px">
       <div class="eyebrow">Plan next session</div>
       <div class="chips" id="advGroupChips"></div>
@@ -1560,7 +1616,7 @@ function renderHome(){
     list.appendChild(card);
   });
 
-  renderToday(); renderWeekVolume(); renderRecovery(); renderNudge(); renderCoachAlerts();
+  renderReadiness(); renderToday(); renderWeekVolume(); renderRecovery(); renderNudge(); renderCoachAlerts();
   // PR feed
   const prs=[];
   finished().forEach(s=>s.exercises.forEach(e=>e.sets.forEach(st=>{ if(st.pr) prs.push({t:st.t||s.start,name:e.name,st}); })));
@@ -1713,12 +1769,25 @@ $('deleteRoutineBtn').onclick=async ()=>{
 };
 
 /* ---------- START SESSION FROM ROUTINE ---------- */
+function attachPredictions(sess){
+  const idx=exerciseIndex();
+  sess.exercises.forEach(ex=>{
+    const rec=idx.get(ex.name);
+    if(!rec) return;
+    rec.type=ex.type||rec.type;
+    let coach=null, fc=null;
+    try{ const rx=prescribe(rec, statsFor(rec)); coach={reps:rx.reps, w:rx.weight!=null?toLb(rx.weight):0}; }catch(e){}
+    try{ const f=forecastExercise(rec); if(f&&f.likely) fc={reps:f.likely.reps, w:f.likely.w!=null?toLb(f.likely.w):0, conf:f.conf}; }catch(e){}
+    if(coach||fc) ex.pred={coach, fc};
+  });
+}
 async function startFromRoutine(rt){
   if(!await parkActiveSession()) return;
   active={
     routineId:rt.id, group:rt.name, start:Date.now(), notes:'',
     exercises: rt.exercises.map(e=>({...e, sets:[]}))
   };
+  attachPredictions(active);
   loggerState={};
   saveDB();
   $('sessNotes').value='';
@@ -2923,6 +2992,178 @@ function personalModel(rec){
   return {k:m.k, quality:m.quality, fat, trend, recov, oneRM};
 }
 
+
+/* =========================================================
+   MODEL B — STATISTICAL FORECAST (independent of the Coach)
+   The Coach is rule-based: double progression plus your fitted strength curve.
+   This one ignores those rules and forecasts your next session from the shape
+   of your history alone:
+     - Holt's linear exponential smoothing (level + trend, recent sessions weighted more)
+     - Brzycki for load/rep conversion, a different equation to the Coach's Epley-style fit
+     - Prediction interval from the model's own past errors
+   Agreement between two unrelated methods is a strong signal; disagreement means
+   uncertainty, and the safer number is usually the right call.
+========================================================= */
+const brzycki1RM=(w,r)=> w*36/(37-Math.min(r,20));
+const brzyckiLoad=(oneRM,r)=> oneRM*(37-Math.min(r,20))/36;
+function holtForecast(series, alpha, beta){
+  if(series.length<2) return null;
+  let level=series[0], trend=series[1]-series[0];
+  const fitted=[series[0]];
+  for(let i=1;i<series.length;i++){
+    const prevLevel=level;
+    fitted.push(level+trend);
+    level = alpha*series[i] + (1-alpha)*(level+trend);
+    trend = beta*(level-prevLevel) + (1-beta)*trend;
+  }
+  return {next:level+trend, level, trend, fitted};
+}
+function forecastExercise(rec){
+  const S=rec.sessions;
+  if(S.length<3) return null;
+  const pts=S.map(s=>{ const b=bestSet(s.sets);
+    return {t:s.t, v: b.weight>0 ? brzycki1RM(b.weight,b.reps) : b.reps, reps:b.reps, w:b.weight}; });
+  const vals=pts.map(p=>p.v);
+  let best=null;
+  for(let a=0.2;a<=0.81;a+=0.1){
+    for(let b=0.05;b<=0.51;b+=0.05){
+      const f=holtForecast(vals,a,b);
+      if(!f) continue;
+      let err=0;
+      for(let i=1;i<vals.length;i++) err+=Math.abs(f.fitted[i]-vals[i]);
+      err/=(vals.length-1);
+      if(!best || err<best.err) best={a,b,err,f};
+    }
+  }
+  if(!best) return null;
+  const f=best.f;
+  const resid=[];
+  for(let i=1;i<vals.length;i++) resid.push(vals[i]-f.fitted[i]);
+  const mean=resid.reduce((x,y)=>x+y,0)/resid.length;
+  const sd=Math.sqrt(resid.reduce((x,y)=>x+(y-mean)**2,0)/Math.max(1,resid.length-1))||0;
+  const cv = f.next? sd/f.next : 0;
+  const conf = cv<0.03 ? 'high' : cv<0.07 ? 'moderate' : 'low';
+  const daysOff=daysAgo(S[S.length-1].t);
+  const decay = daysOff>10 ? 1-Math.min(0.05,(daysOff-10)*0.006) : 1;
+  const projected=f.next*decay;
+  const bw = !pts[pts.length-1].w;
+  const type=rec.type||'dumbbell';
+  const mk=(oneRM,reps)=> bw ? null : snapWeight(Math.max(incFor(type), brzyckiLoad(oneRM,reps)), type);
+  return {
+    conf, sd, trendPerSession: Math.round(f.trend*10)/10, daysOff, bw,
+    oneRM: Math.round(projected),
+    conservative: {reps:REP_HIGH, w:mk(projected-sd, REP_HIGH)},
+    likely:       {reps:REP_TARGET, w:mk(projected, REP_TARGET)},
+    stretch:      {reps:REP_LOW, w:mk(projected+sd, REP_LOW)},
+    n:S.length
+  };
+}
+/* where this lift is heading over the next couple of months */
+function projectionLine(rec, fc){
+  if(!fc || fc.bw || fc.trendPerSession<=0.05) return '';
+  const S=rec.sessions;
+  const spanDays=(S[S.length-1].t-S[0].t)/864e5;
+  const perWeek = spanDays>0 ? fc.trendPerSession*(S.length-1)/(spanDays/7) : 0;
+  if(perWeek<=0.05) return '';
+  const type=rec.type||'dumbbell';
+  const now1=fc.likely.w!=null?toLb(fc.likely.w):0;
+  if(!now1) return '';
+  const wk=(n)=>snapWeight(brzyckiLoad(fc.oneRM+perWeek*n, REP_TARGET), type);
+  const w4=wk(4), w8=wk(8);
+  const d=n=>{ const dt=new Date(Date.now()+n*7*864e5); return dt.toLocaleDateString(undefined,{month:'short', day:'numeric'}); };
+  return `<br><br><b>Projection:</b> at your current rate this lift reaches <b>${dispW(w4)} lb</b> for ${REP_TARGET} by ${d(4)}, and <b>${dispW(w8)} lb</b> by ${d(8)} — assuming you keep training it consistently and nothing stalls.`;
+}
+function renderForecastCards(rows){
+  return rows.map(rec=>{
+    const fc=forecastExercise(rec);
+    if(!fc){
+      return `<div class="card fc-card"><div class="fc-head"><span class="fc-name">${rec.name}</span>
+        <span class="fc-conf">needs 3 sessions</span></div>
+        <div class="fc-why">Forecasting needs at least three sessions of this exercise to see a trend. Logged so far: <b>${rec.sessions.length}</b>.</div></div>`;
+    }
+    const cell=(o,label,cls)=>`<div class="fc-b ${cls}"><b>${o.w!=null?`${o.reps}&times;${o.w}`:`${o.reps} reps`}</b><span>${label}</span></div>`;
+    const dir = fc.trendPerSession>0.2?'climbing':fc.trendPerSession<-0.2?'declining':'flat';
+    return `<div class="card fc-card">
+      <div class="fc-head">
+        <span class="fc-name">${rec.name}</span>
+        <span class="fc-conf ${fc.conf==='high'?'hi':fc.conf==='moderate'?'mid':''}">${fc.conf} confidence</span>
+      </div>
+      <div class="fc-band">
+        ${cell(fc.conservative,'safe','')}
+        ${cell(fc.likely,'likely','likely')}
+        ${cell(fc.stretch,'stretch','')}
+      </div>
+      <div class="fc-why">
+        Smoothed forecast puts your next working max near <b>${fc.oneRM} lb</b>, ${dir} at
+        <b>${fc.trendPerSession>0?'+':''}${fc.trendPerSession} lb</b> per session across ${fc.n} sessions.
+        The spread is your own session-to-session variability (&plusmn;${Math.round(fc.sd)} lb) —
+        ${fc.conf==='high'?'you are very consistent, so the likely number is a safe bet.'
+          :fc.conf==='moderate'?'moderately consistent; open at likely and adjust after set 1.'
+          :'you vary a lot between sessions, so treat the safe number as your opener.'}
+        ${fc.daysOff>10?` Trimmed slightly for <b>${fc.daysOff} days</b> off.`:''}
+        ${projectionLine(rec, fc)}
+      </div>
+    </div>`;
+  }).join('');
+}
+function blendPrediction(rec, rx, fc){
+  // weight each model by how accurate it has been for this exercise
+  const acc=modelAccuracy(rec.name);
+  const wOf=a=> a && a.n>=2 ? 1/Math.max(0.5, a.err) : 0.5;
+  let wc=wOf(acc.coach), wf=wOf(acc.fc);
+  if(fc && fc.conf==='low') wf*=0.5;                        // untrustworthy forecast counts less
+  if(!fc) return {reps:rx.reps, w:rx.weight, src:'Coach only'};
+  if(rx.weight==null || fc.likely.w==null) return {reps:rx.reps, w:rx.weight, src:'Coach only'};
+  const cw=toLb(rx.weight), fw=toLb(fc.likely.w);
+  let w=(cw*wc + fw*wf)/(wc+wf);
+  if(fc.conf==='low') w=Math.min(w, cw, fw);                // low confidence: take the safer number
+  const type=rec.type||'dumbbell';
+  const reps=Math.round((rx.reps*wc + fc.likely.reps*wf)/(wc+wf));
+  return {reps:Math.max(REP_LOW,Math.min(REP_HIGH,reps)), w:dispW(snapWeight(w,type)),
+          src: acc.coach&&acc.fc&&acc.n>=2 ? `weighted by accuracy (${Math.round(wc/(wc+wf)*100)}% Coach)` : 'even blend'};
+}
+function renderCompare(rows){
+  const acc=modelAccuracy(null);
+  let accLine='';
+  if(acc.n>=2){
+    const f=a=>a?`${a.hitRate}% hit · ±${a.err}%`:'—';
+    accLine=`<div class="card" style="padding:14px 16px; margin-bottom:12px">
+      <div class="eyebrow">Track record · ${acc.n} scored predictions</div>
+      <div class="cmp-row"><span class="cmp-n">Coach</span><span class="cmp-v cmp-a">${f(acc.coach)}</span></div>
+      <div class="cmp-row"><span class="cmp-n">Forecast</span><span class="cmp-v cmp-b">${f(acc.fc)}</span></div>
+      <div class="cmp-verdict">Hit rate is how often you met or beat the target. The ± is average error against what you actually lifted. Recommendations below are weighted toward whichever model has been more accurate for each lift.</div>
+    </div>`;
+  } else {
+    accLine=`<div class="card" style="padding:14px 16px; margin-bottom:12px"><div class="cmp-verdict">Both models are being scored against your real results from now on. After a couple of sessions this shows which one predicts you better.</div></div>`;
+  }
+  let out=accLine+'<div class="card" style="padding:16px"><div class="cmp-head"><span class="cmp-n">Exercise</span><span class="cmp-v cmp-a">Coach</span><span class="cmp-v cmp-b">Forecast</span></div>';
+  let agree=0, total=0;
+  rows.forEach(rec=>{
+    const st=statsFor(rec);
+    const rx=prescribe(rec, st);
+    const fc=forecastExercise(rec);
+    const a = rx.weight!=null?`${rx.reps}&times;${rx.weight}`:`${rx.reps} reps`;
+    const b = fc ? (fc.likely.w!=null?`${fc.likely.reps}&times;${fc.likely.w}`:`${fc.likely.reps} reps`) : '&mdash;';
+    let flag='';
+    if(fc && rx.weight!=null && fc.likely.w!=null){
+      total++;
+      const diff=Math.abs(toLb(fc.likely.w)-toLb(rx.weight))/toLb(rx.weight);
+      if(diff<=0.04){ agree++; flag='<span style="color:var(--green)">&check;</span>'; }
+      else flag='<span style="color:var(--gold)">&ne;</span>';
+    }
+    const bl=blendPrediction(rec, rx, fc);
+    out+=`<div class="cmp-row"><span class="cmp-n">${rec.name} ${flag}</span>
+      <span class="cmp-v cmp-a">${a}</span><span class="cmp-v cmp-b">${b}</span></div>
+      <div class="cmp-blend"><span>Use</span> <b>${bl.w!=null?`${bl.reps}&times;${bl.w} lb`:`${bl.reps} reps`}</b> <span>${bl.src}</span></div>`;
+  });
+  let verdict;
+  if(!total) verdict='Log a few more sessions and the two methods can be compared.';
+  else if(agree===total) verdict=`<b>Both methods agree on all ${total} lifts.</b> When a rule-based progression and an independent statistical forecast land in the same place, that number is about as trustworthy as training prediction gets.`;
+  else verdict=`<b>${agree} of ${total} agree.</b> Where they differ, the Coach is applying progression rules while the Forecast follows your measured trend. On a disagreement, take the lower number &mdash; hitting a slightly easy target beats missing reps, which is what actually costs growth.`;
+  out+=`<div class="cmp-verdict">${verdict}</div></div>`;
+  return out;
+}
+
 /* =========================================================
    ADVISOR — evidence-based prescription for the next session
    Principles applied:
@@ -2932,7 +3173,12 @@ function personalModel(rec){
    • Fatigue management: ~2%/set within a session; 5–10% deload after a 3-session stall
    • Frequency: 48–72h between sessions for a muscle; >10 days untrained = detraining risk
 ========================================================= */
-let advGroup=null;
+let advGroup=null, advMode='coach';
+document.querySelectorAll('#advMode button').forEach(b=>b.onclick=()=>{
+  advMode=b.dataset.mode;
+  document.querySelectorAll('#advMode button').forEach(x=>x.classList.toggle('sel', x===b));
+  renderAdvisor();
+});
 function renderAdvisor(){
   const idx=exerciseIndex();
   const all=[...idx.values()];
@@ -2965,6 +3211,8 @@ function renderAdvisor(){
   $('advIntro').textContent=readiness;
 
   const body=$('advBody'); body.innerHTML='';
+  if(advMode==='forecast'){ body.innerHTML=renderForecastCards(rows); return; }
+  if(advMode==='compare'){ body.innerHTML=renderCompare(rows); return; }
   rows.forEach(rec=>{
     const st=statsFor(rec);
     const rx=prescribe(rec, st);
@@ -3008,8 +3256,8 @@ function prescribe(rec, st){
   let verdict, cls, why, weight=last.weight, reps=last.reps;
 
   // readiness multiplier from your own recovery history + detraining decay
-  let readiness=1;
-  if(daysOff<=1) readiness=0.97;
+  let readiness=readinessFactor();
+  if(daysOff<=1) readiness*=0.97;
   else if(daysOff>=10) readiness=1-Math.min(0.06,(daysOff-9)*0.008);
   const trendTxt = M.trend.perWeek
     ? `Your trend is <b>${M.trend.perWeek>0?'+':''}${M.trend.perWeek} lb/week</b> of estimated 1RM.` : '';
@@ -3051,7 +3299,10 @@ function prescribe(rec, st){
       /* Realistic micro-progression: a jump is a small PERCENTAGE of the load, rounded to
          the smallest plate you own — never a fixed lump. Big jumps cost reps, and reps
          near failure are the growth stimulus, so a miss is a step backwards. */
-      const pct=(DB.settings.progPct||2.5)/100;
+      let pct=(DB.settings.progPct||2.5)/100;
+      const miss=missStreak(rec.name);
+      if(miss>=3) pct*=0.4;            // repeatedly missing: back the progression right off
+      else if(miss===2) pct*=0.7;
       const maxJump=Math.max(step, last.weight*pct*(rir!=null&&rir>=3?1.4:1));
       const capped=Math.min(target, last.weight+maxJump);
       target=snapWeight(Math.max(last.weight+step, capped), type);
@@ -3076,9 +3327,13 @@ function prescribe(rec, st){
     }
   }
 
+  const missN=missStreak(rec.name);
+  if(missN>=2) why += ` You have missed the target <b>${missN} sessions running</b>, so the jump is deliberately smaller — repeated misses mean the progression, not you, is wrong.`;
   if(daysOff>=10) why += ` <b>${daysOff} days off</b> — the target is trimmed slightly for detraining.`;
   else if(daysOff<=1) why += ` Trained <b>${daysOff===0?'today':'yesterday'}</b> — expect a little residual fatigue.`;
   if(M.recov && M.recov.n>=2) why += ` Historically your best sessions follow <b>${M.recov.gap}</b> of rest.`;
+  const rf=readinessFactor();
+  if(rf!==1) why += ` Today's check-in ${rf<1?`eased the target ${Math.round((1-rf)*100)}%`:'nudged the target up slightly'}.`;
 
   // per-set plan from YOUR fatigue curve, dropping load when a set would fall out of range
   const heavySets=Math.max(3, Math.min(4, setCount-1));   // heavy work
@@ -3445,6 +3700,49 @@ async function parkActiveSession(){
 }
 
 /* ---------- session summary ---------- */
+/* record how each model did, so accuracy can be measured over time */
+function scorePredictions(s){
+  DB.predLog=DB.predLog||[];
+  s.exercises.forEach(e=>{
+    if(!e.pred || !e.sets.length) return;
+    const best=bestSet(e.sets);
+    const actualCap = best.weight>0 ? e1rmSet(best.weight,best.reps) : best.reps;
+    const rec={name:e.name, t:s.start, actual:{reps:best.reps, w:best.weight}};
+    ['coach','fc'].forEach(m=>{
+      const p=e.pred[m];
+      if(!p) return;
+      const predCap = p.w>0 ? e1rmSet(p.w,p.reps) : p.reps;
+      rec[m]={
+        reps:p.reps, w:p.w,
+        err: actualCap? Math.round((predCap-actualCap)/actualCap*1000)/10 : 0,   // % over/under
+        hit: (best.weight>=p.w-0.01 && best.reps>=p.reps)                        // met or beat it
+      };
+    });
+    DB.predLog.push(rec);
+  });
+  if(DB.predLog.length>400) DB.predLog=DB.predLog.slice(-400);
+}
+function modelAccuracy(name){
+  const rows=(DB.predLog||[]).filter(r=>!name || r.name.toLowerCase()===String(name).toLowerCase());
+  const calc=m=>{
+    const rs=rows.filter(r=>r[m]);
+    if(!rs.length) return null;
+    const absErr=rs.reduce((a,r)=>a+Math.abs(r[m].err),0)/rs.length;
+    const hits=rs.filter(r=>r[m].hit).length;
+    return {n:rs.length, err:Math.round(absErr*10)/10, hitRate:Math.round(hits/rs.length*100)};
+  };
+  return {coach:calc('coach'), fc:calc('fc'), n:rows.length};
+}
+/* three misses in a row on a lift means the progression is too fast for it */
+function missStreak(name){
+  const rows=(DB.predLog||[]).filter(r=>r.name.toLowerCase()===String(name).toLowerCase()).slice(-4);
+  let streak=0;
+  for(let i=rows.length-1;i>=0;i--){
+    const c=rows[i].coach||rows[i].fc;
+    if(c && !c.hit) streak++; else break;
+  }
+  return streak;
+}
 function showSummary(s){
   const sets=s.exercises.reduce((n,e)=>n+e.sets.length,0);
   const vol=sessVol(s);
@@ -3504,6 +3802,69 @@ function renderRecovery(){
     </div>`;
   }).join('');
 }
+
+
+/* ---------- optional readiness check-in ----------
+   Sleep, soreness and energy explain a lot of day-to-day variance that no
+   model can see from set data alone. Entirely optional: with no check-in the
+   app behaves exactly as before. */
+const READY_Q=[
+  ['sleep','Sleep',['Poor','OK','Good']],
+  ['sore','Soreness',['Very sore','Some','Fresh']],
+  ['energy','Energy',['Flat','Normal','High']],
+];
+let readyDraft={};
+function todayKey(){ const d=new Date(); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
+function todaysReadiness(){ return (DB.readiness||{})[todayKey()]||null; }
+function readinessFactor(){
+  const r=todaysReadiness();
+  if(!r) return 1;
+  const score=(r.sleep+r.sore+r.energy)/3;      // each 0..2
+  if(score>=1.7) return 1.02;
+  if(score>=1.2) return 1;
+  if(score>=0.7) return 0.96;
+  return 0.92;
+}
+function renderReadiness(){
+  const card=$('readyCard'), open=$('readyOpen');
+  if(!card) return;
+  const done=todaysReadiness();
+  if(done){
+    card.classList.add('hidden'); open.classList.remove('hidden');
+    const f=readinessFactor();
+    open.textContent = f>=1.02 ? 'Readiness: primed — targets nudged up'
+      : f===1 ? 'Readiness: normal — targets unchanged'
+      : f>=0.96 ? 'Readiness: a bit flat — targets eased ~4%'
+      : 'Readiness: rough day — targets eased ~8%';
+    open.onclick=()=>{ card.classList.remove('hidden'); open.classList.add('hidden'); drawReadyRows(); };
+    return;
+  }
+  if(DB.settings.readySkip===todayKey()){ card.classList.add('hidden'); open.classList.remove('hidden');
+    open.textContent='Readiness check-in'; open.onclick=()=>{ card.classList.remove('hidden'); open.classList.add('hidden'); drawReadyRows(); };
+    return; }
+  card.classList.remove('hidden'); open.classList.add('hidden');
+  drawReadyRows();
+}
+function drawReadyRows(){
+  const cur=todaysReadiness()||{};
+  readyDraft={sleep:cur.sleep??1, sore:cur.sore??1, energy:cur.energy??1};
+  $('readyRows').innerHTML=READY_Q.map(([k,label,opts])=>`
+    <div class="rd-row"><span class="rd-lbl">${label}</span>
+      <span class="rd-opts">${opts.map((o,i)=>`<button class="rd-o${readyDraft[k]===i?' sel':''}" data-rk="${k}" data-rv="${i}">${o}</button>`).join('')}</span>
+    </div>`).join('');
+  $('readyRows').querySelectorAll('[data-rk]').forEach(b=>b.onclick=()=>{
+    readyDraft[b.dataset.rk]=+b.dataset.rv;
+    drawReadyRows();
+  });
+}
+$('readySave').onclick=()=>{
+  DB.readiness=DB.readiness||{};
+  DB.readiness[todayKey()]={...readyDraft, t:Date.now()};
+  saveDB(true); renderReadiness(); if(active) renderSession();
+  const f=readinessFactor();
+  toast(f<1?`Targets eased ${Math.round((1-f)*100)}% for today`:f>1?'Targets nudged up — good day to push':'Targets unchanged');
+};
+$('readySkip').onclick=()=>{ DB.settings.readySkip=todayKey(); saveDB(); renderReadiness(); };
 
 /* ---------- what to train today ----------
    Ranks by how overdue each workout is. Because it is staleness-based, skipping a day
@@ -3948,6 +4309,7 @@ $('finishBtn').onclick=async ()=>{
     active.end=Date.now();
     active.exercises.forEach(e=>delete e.recNote);
     done=active;
+    scorePredictions(active);
     DB.sessions.push(active);
   }
   active=null; loggerState={}; saveDB(true, true); stopRest(); stopPhaseAudio();
