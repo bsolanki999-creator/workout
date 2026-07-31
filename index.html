@@ -147,6 +147,18 @@
   .alt-name{flex:1; min-width:0; font-weight:600; font-size:14.5px}
   .alt-days{font-size:12px; color:var(--ink-dim); font-variant-numeric:tabular-nums}
   .rec-none{color:var(--ink-ghost); font-size:13px}
+  .coach-msg{font-size:13px; color:var(--ink-dim); line-height:1.6; padding:8px 0; border-bottom:1px solid var(--line)}
+  .coach-msg:last-child{border-bottom:none}
+  .wv-row{display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13.5px}
+  .wv-row:last-child{border-bottom:none}
+  .wv-name{width:78px; flex:none; font-weight:600}
+  .wv-bar{flex:1; height:5px; border-radius:3px; background:var(--panel3); overflow:hidden}
+  .wv-bar i{display:block; height:100%; border-radius:3px; background:var(--grad)}
+  .wv-bar i.low{background:var(--ink-ghost)}
+  .wv-bar i.high{background:linear-gradient(135deg,#E8756B,#C9524A)}
+  .wv-n{width:24px; flex:none; text-align:right; font-weight:700; font-variant-numeric:tabular-nums}
+  .wv-n.low{color:var(--ink-dim)} .wv-n.good{color:var(--green)} .wv-n.high{color:var(--red)}
+  .wv-lbl{width:76px; flex:none; font-size:10.5px; color:var(--ink-ghost); text-align:right}
   .routine-card{cursor:pointer; display:flex; align-items:center; gap:14px; padding:16px; transition:border-color .15s}
   .routine-card:hover{border-color:rgba(233,180,92,.3)}
   .mono{
@@ -370,6 +382,33 @@
     font-size:11.5px; color:var(--ink-dim);
   }
   .lp-foot b{color:var(--gold)}
+  .planpanel{
+    margin-top:10px; background:linear-gradient(180deg, rgba(233,180,92,.07), rgba(233,180,92,.02));
+    border:1px solid rgba(233,180,92,.22); border-radius:14px; padding:11px 12px;
+  }
+  .pp-head{display:flex; align-items:center; gap:8px; margin-bottom:9px}
+  .pp-title{flex:1; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--gold)}
+  .pp-tag{font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:3px 8px; border-radius:999px; background:var(--panel2); color:var(--ink-dim)}
+  .pp-tag.v-push{background:rgba(123,201,143,.14); color:var(--green)}
+  .pp-tag.v-hold{background:var(--gold-soft); color:var(--gold)}
+  .pp-tag.v-back{background:rgba(232,117,107,.14); color:var(--red)}
+  .pp-rows{display:flex; flex-direction:column; gap:4px}
+  .pp-row{
+    display:flex; align-items:center; gap:9px; padding:7px 9px; border-radius:10px;
+    background:var(--panel); border:1px solid var(--line); cursor:pointer;
+  }
+  .pp-row:active{border-color:var(--gold)}
+  .pp-row.backoff{background:var(--panel2); border-style:dashed}
+  .pp-row.backoff .pp-i{background:var(--panel3); color:var(--gold)}
+  .pp-row.backoff .pp-load{color:var(--ink-dim)}
+  .pp-i{width:18px; height:18px; flex:none; border-radius:50%; background:var(--grad); color:#1B1408;
+    font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center}
+  .pp-load{flex:1; font-family:var(--serif); font-weight:600; font-size:16px; font-variant-numeric:tabular-nums}
+  .pp-rir{font-size:10.5px; color:var(--ink-dim); letter-spacing:.02em; flex:none}
+  .pp-stats{display:flex; gap:10px; flex-wrap:wrap; margin-top:9px; font-size:11px; color:var(--ink-dim)}
+  .pp-stats b{color:var(--ink); font-variant-numeric:tabular-nums}
+  .pp-foot{margin-top:8px; font-size:11.5px; color:var(--ink-dim); line-height:1.5}
+  .pp-tapnote{color:var(--ink-ghost)}
   .sets{margin-top:12px}
   .set-row{
     display:flex; align-items:center; gap:12px; padding:10px; border-radius:14px;
@@ -542,6 +581,17 @@
     </div>
 
     <div class="card hidden" id="nudgeCard" style="padding:12px 16px; font-size:13.5px"></div>
+    <div class="card hidden" id="coachCard" style="padding:14px 16px; border-color:rgba(233,180,92,.3)">
+      <div class="eyebrow">Coach</div>
+      <div id="coachList"></div>
+    </div>
+
+    <div class="card" id="weekVolCard" style="padding:14px 16px">
+      <div class="eyebrow">Hard sets this week · by muscle</div>
+      <div id="weekVolList"></div>
+      <div class="muted" style="font-size:11.5px; margin-top:9px; line-height:1.5">10–20 hard sets per muscle per week is the range most growth research converges on.</div>
+    </div>
+
     <div class="card" id="recoveryCard" style="padding:14px 16px">
       <div class="eyebrow">Last trained · past 2 weeks</div>
       <div id="recoveryList"></div>
@@ -680,7 +730,11 @@
       </div>
       <div style="margin-top:10px">
         <label for="exCue">Setup notes / cues — optional</label>
-        <input id="exCue" placeholder="Seat height 4, elbows tucked, 2s negative…">
+        <input id="exCue" placeholder="Seat height 4, elbows tucked…">
+      </div>
+      <div style="margin-top:10px">
+        <label for="exTempo">Tempo — optional (seconds down / pause / up)</label>
+        <input id="exTempo" placeholder="e.g. 3-1-1 for a 3s lowering">
       </div>
       <div style="margin-top:10px">
         <label>Visual (photo or GIF) — optional</label>
@@ -913,6 +967,21 @@
       <button class="btn ghost" id="confirmNo" style="flex:1">Cancel</button>
       <button class="btn" id="confirmYes" style="flex:1">OK</button>
     </div>
+  </div>
+</div>
+
+<!-- POST-SET FEEDBACK -->
+<div class="modal hidden" id="feedbackModal" style="z-index:125; align-items:center">
+  <div class="card" style="max-width:340px; width:calc(100% - 44px); margin:0; padding:20px">
+    <div class="eyebrow" style="text-align:center; margin-bottom:4px">How did that set feel?</div>
+    <div id="fbSetLine" style="text-align:center; font-family:var(--serif); font-size:20px; margin-bottom:14px"></div>
+    <div style="display:flex; flex-direction:column; gap:8px">
+      <button class="btn ghost fb-opt" data-fb="easy">Easy — had 3+ more</button>
+      <button class="btn ghost fb-opt" data-fb="planned">As planned — 1–2 left</button>
+      <button class="btn ghost fb-opt" data-fb="hard">Grindy — nothing left</button>
+      <button class="btn ghost fb-opt" data-fb="missed">Missed the target</button>
+    </div>
+    <button class="btn ghost block" id="fbSkip" style="margin-top:12px; opacity:.6">Skip</button>
   </div>
 </div>
 
@@ -1333,6 +1402,13 @@ const setLoad = (e,s)=> (s.weight||0)
   + ((e.type==='bodyweight' && DB.settings.bw) ? DB.settings.bw : 0)
   + ((e.type==='band' && typeof e.bandStrength==='number') ? e.bandStrength : 0);
 const exVol = e => e.sets.reduce((a,s)=>a+s.reps*setLoad(e,s),0);
+/* Effective reps: only the reps near failure drive growth. A set stopped with
+   ~3 in reserve contributes its last ~2 reps; a set to failure contributes ~5. */
+function effectiveReps(s){
+  const rir = s.rpe!=null ? Math.max(0,10-s.rpe) : (s.fb ? (FB_RIR[s.fb]??1.5) : 1.5);
+  return Math.max(0, Math.min(s.reps, 5-rir));
+}
+const exEffective = e => e.sets.reduce((a,s)=>a+effectiveReps(s),0);
 const sessVol = s => s.exercises.reduce((a,e)=>a+exVol(e),0);
 function lastSessionOfRoutine(rid){
   return finished().filter(s=>s.routineId===rid).sort((a,b)=>b.start-a.start)[0]||null;
@@ -1473,7 +1549,7 @@ function renderHome(){
     list.appendChild(card);
   });
 
-  renderToday(); renderRecovery(); renderNudge();
+  renderToday(); renderWeekVolume(); renderRecovery(); renderNudge(); renderCoachAlerts();
   // PR feed
   const prs=[];
   finished().forEach(s=>s.exercises.forEach(e=>e.sets.forEach(st=>{ if(st.pr) prs.push({t:st.t||s.start,name:e.name,st}); })));
@@ -1559,6 +1635,7 @@ function startBxEdit(i){
   $('exTargetReps').value=e.targetReps||'';
   $('exRest').value=e.rest||90;
   $('exCue').value=e.cue||'';
+  $('exTempo').value=e.tempo||'';
   setExPic(e.pic||null);
   $('addBxBtn').textContent='Update exercise';
   renderBxList();
@@ -1584,12 +1661,13 @@ $('addBxBtn').onclick=()=>{
     targetReps: parseInt($('exTargetReps').value)||10,
     rest: parseInt($('exRest').value)||90,
     cue: $('exCue').value.trim(),
+    tempo: $('exTempo').value.trim(),
     pic: exPicData||null
   };
   if(editingBx!=null){ builder.exercises[editingBx]=def; toast('Exercise updated'); cancelBxEdit(); }
   else builder.exercises.push(def);
   setExPic(null);
-  ['exName','exVariant','exAngle','exStartWeight','exTargetReps','exCue'].forEach(id=>$(id).value='');
+  ['exName','exVariant','exAngle','exStartWeight','exTargetReps','exCue','exTempo'].forEach(id=>$(id).value='');
   $('exBandMode').value='none'; $('exType').value='bodyweight'; $('exType').dispatchEvent(new Event('change'));
   $('bandStrengthField').classList.add('hidden');
   renderBxList();
@@ -1688,6 +1766,180 @@ function repRangeRec(ex,set){
   return {w:target, note:`${set.reps} reps${rpeTxt} — ${dir} for ${REP_LOW}–${REP_HIGH}. Est. 1RM ~${Math.round(oneRM)} lb → next set ${target} lb (~${pct}% 1RM, fatigue-adjusted).${loadTip(target)}`};
 }
 
+
+
+/* ---------- today's prescription, tuned for hypertrophy ----------
+   Grounded in the growth literature: most gain comes from hard sets taken
+   close to failure (roughly 1–3 reps in reserve), 10–20 hard sets per muscle
+   per week, and small repeatable jumps in load. Targets are what your own
+   fitted curve says you can actually hit — the point is to beat last session
+   by a little, every session, not to chase a number you'll miss. */
+function todayPlanPanel(ex, xi){
+  const rec=exerciseIndex().get(ex.name);
+  if(!rec){
+    const w=ex.startWeight||0;
+    return `<div class="planpanel">
+      <div class="pp-head"><span class="pp-title">Today's plan</span><span class="pp-tag">baseline</span></div>
+      <div class="pp-rows">
+        ${[1,2,3].map(i=>`<div class="pp-row" data-plan="${xi}" data-pr="${ex.targetReps||8}" data-pw="${w?dispW(w):0}">
+          <span class="pp-i">${i}</span>
+          <span class="pp-load">${ex.targetReps||8} × ${w?dispW(w)+' lb':'BW'}</span>
+          <span class="pp-rir">${i===3?'0–1 in reserve':'2 in reserve'}</span></div>`).join('')}
+        <div class="pp-row backoff" data-plan="${xi}" data-pr="15" data-pw="${w?dispW(Math.round(w*0.6*4)/4):0}">
+          <span class="pp-i">B</span>
+          <span class="pp-load">15 × ${w?dispW(Math.round(w*0.6*4)/4)+' lb':'BW'}</span>
+          <span class="pp-rir">to failure · burn</span>
+        </div>
+      </div>
+      <div class="pp-foot">Find a weight you could stop 2 reps short of on set 1. That becomes the number everything else builds on.</div>
+    </div>`;
+  }
+  rec.type=ex.type||rec.type;
+  const st=statsFor(rec);
+  const rx=prescribe(rec, st);
+  const plan=rx.plan||[];
+  if(!plan.length) return '';
+  const totalReps=plan.reduce((a,p)=>a+p.reps,0);
+  const vol=plan.reduce((a,p)=>a+(p.weight!=null?toLb(p.weight):0)*p.reps,0);
+  const heavyN=plan.filter(p=>p.kind!=='backoff').length;
+  const rirFor=(p,i)=> p.kind==='backoff' ? 'to failure · burn'
+    : (i===heavyN-1 ? '0–1 in reserve' : (i===0 ? '2 in reserve' : '1–2 in reserve'));
+  const rows=plan.map((p,i)=>`
+    <div class="pp-row${p.kind==='backoff'?' backoff':''}" data-plan="${xi}" data-pr="${p.reps}" data-pw="${p.weight!=null?p.weight:0}">
+      <span class="pp-i">${p.kind==='backoff'?'B':i+1}</span>
+      <span class="pp-load">${p.reps} × ${p.weight!=null?dispW(p.weight)+' lb':'BW'}</span>
+      <span class="pp-rir">${rirFor(p,i)}</span>
+    </div>`).join('');
+  const growth = rx.verdict==='Deload'
+    ? 'A planned back-off week: lighter now so the next block climbs again.'
+    : rx.verdict==='Earn the top'
+    ? `Same load, one more rep per set. Once you own ${REP_HIGH} across the board, the weight goes up — that is the whole engine of growth.`
+    : rx.verdict==='Add load'
+    ? `Small jump you should actually complete. Chasing a bigger one costs reps, and reps near failure are what drive growth.`
+    : `Build the pattern first; load follows once the movement is grooved.`;
+  return `<div class="planpanel">
+    <div class="pp-head">
+      <span class="pp-title">Today's plan</span>
+      <span class="pp-tag ${rx.cls}">${rx.verdict}</span>
+    </div>
+    <div class="pp-rows">${rows}</div>
+    <div class="pp-stats">
+      <span><b>${heavyN}</b> heavy + <b>1</b> back-off</span>
+      <span><b>${totalReps}</b> total reps</span>
+      ${vol?`<span><b>${Math.round(vol).toLocaleString()}</b> lb volume</span>`:''}
+      <span>rest <b>${fmtClock(rx.rest)}</b></span>
+    </div>
+    <div class="pp-foot">${growth} <b>Set B</b> is a back-off: ~60% load for high reps to failure — it recruits what the heavy sets leave behind, without adding much fatigue. <span class="pp-tapnote">Tap a row to load it.</span></div>
+  </div>`;
+}
+
+
+/* ---------- post-set feedback: the single most useful signal for tuning targets ---------- */
+let fbCtx=null;
+const FB_RIR={easy:3, planned:1.5, hard:0, missed:0};
+function askFeedback(ex, set, xi){
+  if(DB.settings.feedbackOff) return;
+  fbCtx={ex, set, xi};
+  $('fbSetLine').textContent=`${set.reps} × ${dispW(set.weight)||'BW'}${set.weight?' lb':''}`;
+  $('feedbackModal').classList.remove('hidden');
+}
+document.querySelectorAll('.fb-opt').forEach(b=>b.onclick=()=>{
+  if(!fbCtx) return;
+  const v=b.dataset.fb;
+  fbCtx.set.fb=v;
+  if(fbCtx.set.rpe==null) fbCtx.set.rpe=10-FB_RIR[v];       // feedback doubles as RPE
+  saveDB(true);
+  $('feedbackModal').classList.add('hidden');
+  const ex=fbCtx.ex, xi=fbCtx.xi;
+  // immediate correction for the next set
+  if(v==='easy' && ex.sets.length){
+    const bump=incFor(ex.type);
+    loggerState[xi]={reps:loggerState[xi].reps, weight:(loggerState[xi].weight||0)+bump, rpe:null};
+    toast(`Next set bumped +${bump} lb — you had more in the tank`);
+  } else if(v==='missed'){
+    const drop=incFor(ex.type);
+    loggerState[xi]={reps:Math.max(1,loggerState[xi].reps-1), weight:Math.max(0,(loggerState[xi].weight||0)-drop), rpe:null};
+    toast(`Next set eased back — target was too much today`);
+  }
+  fbCtx=null; renderSession();
+});
+$('fbSkip').onclick=()=>{ $('feedbackModal').classList.add('hidden'); fbCtx=null; };
+
+/* ---------- weekly hard sets per muscle ---------- */
+function weeklyMuscleVolume(days){
+  const cutoff=Date.now()-(days||7)*864e5;
+  const out={};
+  finished().filter(s=>s.start>=cutoff).forEach(s=>s.exercises.forEach(e=>{
+    const m=muscleOf(e.name);
+    const hard=e.sets.filter(x=>x.fb!=='easy').length;      // easy sets count for little
+    out[m]=(out[m]||0)+hard;
+  }));
+  return out;
+}
+function renderWeekVolume(){
+  const el=$('weekVolList'); if(!el) return;
+  const v=weeklyMuscleVolume(7);
+  const rows=Object.entries(v).sort((a,b)=>b[1]-a[1]);
+  if(!rows.length){ el.innerHTML='<div class="rec-none">No sets logged in the past 7 days.</div>'; return; }
+  el.innerHTML=rows.map(([m,n])=>{
+    const state = n<10 ? 'low' : n<=20 ? 'good' : 'high';
+    const label = state==='low' ? 'below range' : state==='good' ? 'in range' : 'above range';
+    const pct=Math.min(100, n/20*100);
+    return `<div class="wv-row">
+      <span class="wv-name">${m}</span>
+      <span class="wv-bar"><i class="${state}" style="width:${pct}%"></i></span>
+      <span class="wv-n ${state}">${n}</span>
+      <span class="wv-lbl">${label}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderCoachAlerts(){
+  const card=$('coachCard'), list=$('coachList');
+  if(!card||!list) return;
+  const msgs=[];
+  const sf=systemicFatigue();
+  if(sf) msgs.push(`<b style="color:var(--gold)">Deload week recommended.</b> ${sf.slipping} of ${sf.tracked} tracked lifts are stalling or losing reps at once — that pattern is systemic fatigue, not a strength ceiling. Take one week at ~60% of your usual load and volume, then resume; most lifters come back past their old bests within two sessions.`);
+  const stale=staleExercises();
+  if(stale.length) msgs.push(`<b style="color:var(--gold)">Time to rotate.</b> ${stale.map(s=>s.name).join(', ')} ${stale.length>1?'have':'has'} been flat for ${stale[0].weeks}+ weeks. Swapping to a close variation (different angle, grip, or implement) usually restarts progress — your history stays intact either way.`);
+  const v=weeklyMuscleVolume(7);
+  const low=Object.entries(v).filter(([,n])=>n>0&&n<10).map(([m])=>m);
+  if(low.length) msgs.push(`<b style="color:var(--gold)">Under-stimulated:</b> ${low.join(', ')} — under 10 hard sets this week. One more session or a couple of extra sets would put you in the growth range.`);
+  if(!msgs.length){ card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  list.innerHTML=msgs.map(m=>`<div class="coach-msg">${m}</div>`).join('');
+}
+
+/* ---------- systemic deload detection ---------- */
+function systemicFatigue(){
+  const recent=finished().filter(s=>s.start>=Date.now()-28*864e5).sort((a,b)=>a.start-b.start);
+  if(recent.length<6) return null;
+  const idx=exerciseIndex();
+  let slipping=0, tracked=0;
+  idx.forEach(rec=>{
+    if(rec.sessions.length<3) return;
+    tracked++;
+    const st=statsFor(rec);
+    if(st.repSlide || st.stalled>=2) slipping++;
+  });
+  if(tracked>=2 && slipping/tracked>=0.5){
+    return {slipping, tracked};
+  }
+  return null;
+}
+
+/* ---------- stale stimulus / rotation ---------- */
+function staleExercises(){
+  const out=[];
+  exerciseIndex().forEach(rec=>{
+    if(rec.sessions.length<6) return;
+    const span=(rec.sessions[rec.sessions.length-1].t-rec.sessions[0].t)/(7*864e5);
+    if(span<8) return;
+    const st=statsFor(rec);
+    if(st.delta!=null && st.delta<=0) out.push({name:rec.name, weeks:Math.round(span)});
+  });
+  return out;
+}
 
 /* ---------- previous session at a glance, with today's target ---------- */
 function lastSessionPanel(ex){
@@ -1825,12 +2077,13 @@ function renderSession(){
         <div>
           <div class="ex-name" data-prog="${xi}">${ex.name} <span class="spark"><svg class="ic-svg " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 7 13.5 15.5 8.5 10.5 2 17M16 7h6v6"/></svg></span></div>
           <div class="ex-meta">${ex.type} · ${exLabel(ex)}</div>
-          ${ex.cue?`<div class="ex-cue">${ex.cue}</div>`:''}
+          ${(ex.cue||ex.tempo)?`<div class="ex-cue">${[ex.cue,ex.tempo?`tempo ${ex.tempo}`:''].filter(Boolean).join(' · ')}</div>`:''}
         </div>
         <div><button class="iconbtn" data-del="${xi}" aria-label="Skip exercise today"><svg class="ic-svg " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
       </div>
       ${ex.pic?`<img class="ex-thumb" src="${ex.pic}" alt="${ex.name} form reference" data-pic="${xi}">`:''}
       ${lastSessionPanel(ex)}
+      ${todayPlanPanel(ex, xi)}
       <div class="sets">${setsHtml}${upcoming}</div>
       <div class="logger">
         ${ex.recNote?`<div class="coach">${ex.recNote}</div>`:''}
@@ -1880,6 +2133,13 @@ function renderSession(){
       }
       saveDB(); renderSession();
     };
+  });
+  list.querySelectorAll('[data-plan]').forEach(r=>r.onclick=()=>{
+    const xi=+r.dataset.plan;
+    $('reps-'+xi).value=r.dataset.pr;
+    $('wt-'+xi).value=r.dataset.pw;
+    syncLogger(xi);
+    toast(`Loaded ${r.dataset.pr} × ${r.dataset.pw||'BW'}`);
   });
   list.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>step(+b.dataset.x,b.dataset.st,+b.dataset.d));
   list.querySelectorAll('[data-suggest]').forEach(b=>b.onclick=()=>{
@@ -1953,6 +2213,7 @@ function logSet(xi,repeat,isFinal){
     loggerState[xi]= nxt ? {reps:nxt.reps,weight:nxt.weight} : {reps,weight};
   }
   saveDB(true); renderSession();
+  askFeedback(ex, set, xi);
   if(isFinal){
     // last set of this exercise: no waiting — rest is already logged on the set itself
     stopRest(); stopPhaseAudio(); clearSndTimers();
@@ -2402,6 +2663,7 @@ function statsFor(rec){
   const first=tops[0], last=tops[tops.length-1];
   const vol=s=>s.sets.reduce((a,x)=>a+x.reps*((x.weight||0)+((rec.type==='bodyweight'&&DB.settings.bw)?DB.settings.bw:0)),0);
   const allSets=S.reduce((n,s)=>n+s.sets.length,0);
+  const effReps=S.reduce((n,s)=>n+s.sets.reduce((a,x)=>a+effectiveReps(x),0),0);
   const lifetimeVol=S.reduce((a,s)=>a+vol(s),0);
   const bestEver=[...tops].sort((a,b)=>(b.weight-a.weight)||(b.reps-a.reps))[0];
   const e1=e1rmSet(bestEver.weight||0,bestEver.reps);
@@ -2430,7 +2692,7 @@ function statsFor(rec){
   }
   const prs=S.reduce((n,s)=>n+s.sets.filter(x=>x.pr).length,0);
   const avgRpe=(()=>{ const r=S.flatMap(s=>s.sets.map(x=>x.rpe).filter(Boolean)); return r.length?(r.reduce((a,b)=>a+b,0)/r.length).toFixed(1):null; })();
-  return {S, tops, first, last, bestEver, e1, delta, deltaPct, deltaUnit, days, allSets, lifetimeVol, stalled, repSlide, prs, avgRpe, useReps,
+  return {S, tops, first, last, bestEver, e1, delta, deltaPct, deltaUnit, days, allSets, effReps, lifetimeVol, stalled, repSlide, prs, avgRpe, useReps,
           series:S.map(s=>({t:s.t, v:useReps?bestSet(s.sets).reps:bestSet(s.sets).weight}))};
 }
 /* inline sparkline with gradient fill */
@@ -2517,6 +2779,7 @@ function renderStats(){
         <div><span class="v">${st.e1?Math.round(st.e1):'—'}</span><span class="k">Est 1RM</span></div>
         <div><span class="v">${Math.round(st.lifetimeVol).toLocaleString()}</span><span class="k">Total lb</span></div>
         <div><span class="v">${st.avgRpe||'—'}</span><span class="k">Avg RPE</span></div>
+        <div><span class="v">${Math.round(st.effReps)}</span><span class="k">Effective reps</span></div>
       </div>
       ${flags.length?`<div class="stat-flags">${flags.join('')}</div>`:''}`;
     card.onclick=ev=>{ if(ev.target.closest('[data-rename]')) return; openProgress(rec.name); };
@@ -2745,7 +3008,7 @@ function prescribe(rec, st){
   }
   else if(bw){
     // bodyweight: progress reps, then added load
-    if(last.reps>REP_HIGH){
+    if(last.reps>=REP_HIGH){
       verdict='Add load'; cls='v-push'; weight=null; reps=REP_LOW;
       why=`<b>${last.reps} reps</b> is past the range. Add ${incFor('bodyweight')} lb on a belt and expect about ${REP_LOW}–${REP_LOW+1} reps. ${modelTxt}`;
     } else {
@@ -2761,11 +3024,12 @@ function prescribe(rec, st){
     target = Math.min(last.weight*1.12, Math.max(last.weight*0.88, target));
     target = snapWeight(target, type);
 
-    if(last.reps>REP_HIGH || (rir!=null && rir>=3)){
+    if(last.reps>=REP_HIGH || (rir!=null && rir>=3)){
       verdict='Add load'; cls='v-push';
       if(target<=last.weight) target=snapWeight(last.weight+step,type);
       weight=target; reps=predictReps(target,oneRM,k,0,fat)||REP_LOW;
-      why=`Last time: <b>${last.reps} reps @ ${dispW(last.weight)} lb</b>${avgRpe?` (RPE ${avgRpe.toFixed(1)}, ~${rir.toFixed(0)} in reserve)`:''}. ${modelTxt} That puts your working max near <b>${Math.round(oneRM)} lb</b>, so <b>${dispW(target)} lb</b> should land you at <b>~${reps} reps</b> — back inside ${REP_LOW}–${REP_HIGH}. ${trendTxt}`;
+      const owned = last.reps>=REP_HIGH ? ` You owned the top of the ${REP_LOW}–${REP_HIGH} range, which is the signal to move up.` : '';
+      why=`Last time: <b>${last.reps} reps @ ${dispW(last.weight)} lb</b>${avgRpe?` (RPE ${avgRpe.toFixed(1)}, ~${rir.toFixed(0)} in reserve)`:''}.${owned} ${modelTxt} That puts your working max near <b>${Math.round(oneRM)} lb</b>, so <b>${dispW(target)} lb</b> should land you at <b>~${reps} reps</b> — back inside ${REP_LOW}–${REP_HIGH}. ${trendTxt}`;
     }
     else if(last.reps<REP_LOW){
       verdict='Reduce'; cls='v-back';
@@ -2785,9 +3049,16 @@ function prescribe(rec, st){
   if(M.recov && M.recov.n>=2) why += ` Historically your best sessions follow <b>${M.recov.gap}</b> of rest.`;
 
   // per-set plan from YOUR fatigue curve, dropping load when a set would fall out of range
+  const heavySets=Math.max(3, Math.min(4, setCount-1));   // heavy work
   const plan=[]; let w = weight==null?null:weight;
   const chaseReps = (verdict==='Earn the top' || verdict==='Baseline');
-  for(let i=0;i<setCount;i++){
+  // when adding load, the first set must clear last session's best by a real margin
+  let minFirstReps=0;
+  if(verdict==='Add load' && w>0 && last.weight>0){
+    const wasCap=e1rmSet(last.weight,last.reps)*1.015;      // beat it by ~1.5%
+    for(let r=1;r<=REP_HIGH+3;r++){ if(e1rmSet(w,r)>=wasCap){ minFirstReps=r; break; } }
+  }
+  for(let i=0;i<heavySets;i++){
     let r = w!=null && M.oneRM ? predictReps(w, M.oneRM*readiness, k, i, fat) : Math.max(REP_LOW-1, reps-(i>=2?i-1:0));
     if(chaseReps){
       // holding the load: the goal is one more rep than you managed on that set
@@ -2800,9 +3071,27 @@ function prescribe(rec, st){
       w=Math.max(step, snapWeight(w-Math.max(step,w*0.05), type));
       r=predictReps(w, M.oneRM*readiness, k, i, fat);
     }
-    plan.push({reps:Math.max(1,r||reps), weight:w==null?null:dispW(w)});
+    if(i===0 && minFirstReps) r=Math.max(r||0, minFirstReps);
+    r=Math.max(1, r||reps);
+    // heavy work stays in the target zone — a prediction above it means the load is too light
+    if(verdict!=='Deload') r=Math.min(r, REP_HIGH);
+    else r=Math.min(r, REP_HIGH+2);
+    r=Math.max(r, Math.min(REP_LOW-1, r));
+    plan.push({reps:r, weight:w==null?null:dispW(w), kind:'heavy'});
   }
-  return {verdict, cls, weight: weight==null?null:dispW(weight), reps, sets:setCount, rest, plan, why,
+  /* Back-off set: lighter load taken close to failure for 12–20 reps.
+     Heavy sets bias high-threshold fibres; a metabolite-heavy finisher adds
+     stimulus that low-rep work misses, at little recovery cost. */
+  if(weight!=null && weight>0){
+    const boW=Math.max(incFor(type), snapWeight(weight*0.6, type));
+    let boR = M.oneRM ? predictReps(boW, M.oneRM*readiness, k, heavySets, fat) : 15;
+    boR=Math.max(12, Math.min(20, boR||15));
+    plan.push({reps:boR, weight:dispW(boW), kind:'backoff'});
+  } else {
+    plan.push({reps:Math.max(12, (reps||8)+6), weight:null, kind:'backoff'});
+  }
+  if(plan.length) reps=plan[0].reps;
+  return {verdict, cls, weight: weight==null?null:dispW(weight), reps, sets:plan.length, heavySets, rest, plan, why,
           model:{k, fatigue:fat.perSet, oneRM:Math.round(M.oneRM), trend:M.trend.perWeek, quality:M.quality}};
 }
 
