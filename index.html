@@ -1201,6 +1201,16 @@
       </div>
     </div>
     <div style="margin-top:16px">
+      <label for="stProg">How fast to add weight</label>
+      <select id="stProg">
+        <option value="1.5">Careful — ~1.5% per jump (slow but you never miss reps)</option>
+        <option value="2.5" selected>Standard — ~2.5% per jump (recommended)</option>
+        <option value="4">Aggressive — ~4% per jump</option>
+      </select>
+      <div class="muted" style="font-size:12px; margin-top:6px">Jumps are a percentage of the weight, then rounded to the smallest plate you own. A 30 lb curl moves ~0.75 lb; a 185 lb squat moves ~4.5 lb.</div>
+    </div>
+
+    <div style="margin-top:16px">
       <label>Weight steps by equipment (lb)</label>
       <div class="muted" style="font-size:12px; margin-bottom:8px">The ± buttons use the first value. Advisor suggestions use the equipment values. Barbell and dumbbell values are the total change — half lands on each side.</div>
       <div class="row" id="incRow"></div>
@@ -1298,7 +1308,8 @@ async function loadDB(){
     DB.settings.microPlates=true;
     setTimeout(saveDB,0);
   }
-  if(!DB.settings.inc) DB.settings.inc={barbell:0.5, dumbbell:1, cable:1, machine:5, band:5, bodyweight:2.5};
+  if(DB.settings.progPct==null) DB.settings.progPct=2.5;
+  if(!DB.settings.inc) DB.settings.inc={barbell:0.5, dumbbell:0.5, cable:1, machine:5, band:5, bodyweight:2.5};
   if(DB.activeSession) active = DB.activeSession;
   if(hasLS && dataScore(DB)>0) pushSnapshot(JSON.stringify(DB));
 }
@@ -1800,6 +1811,16 @@ function todayPlanPanel(ex, xi){
   const plan=rx.plan||[];
   if(!plan.length) return '';
   const totalReps=plan.reduce((a,p)=>a+p.reps,0);
+  // how big is today's jump, really?
+  let jumpNote='';
+  const prevBest=(()=>{ const h=sessionsWithExercise(ex.name); return h.length?bestSet(h[h.length-1].ex.sets):null; })();
+  if(prevBest && prevBest.weight>0 && plan[0] && plan[0].weight!=null){
+    const nw=toLb(plan[0].weight), diff=nw-prevBest.weight;
+    if(Math.abs(diff)>0.01){
+      const pct=Math.round(diff/prevBest.weight*1000)/10;
+      jumpNote=`<span style="color:${diff>0?'var(--green)':'var(--ink-dim)'}"><b>${diff>0?'+':''}${Math.round(diff*100)/100} lb</b> (${pct>0?'+':''}${pct}%)</span>`;
+    } else jumpNote=`<span>same load</span>`;
+  }
   const vol=plan.reduce((a,p)=>a+(p.weight!=null?toLb(p.weight):0)*p.reps,0);
   const heavyN=plan.filter(p=>p.kind!=='backoff').length;
   const rirFor=(p,i)=> p.kind==='backoff' ? 'to failure · burn'
@@ -1824,6 +1845,7 @@ function todayPlanPanel(ex, xi){
     </div>
     <div class="pp-rows">${rows}</div>
     <div class="pp-stats">
+      ${jumpNote}
       <span><b>${heavyN}</b> heavy + <b>1</b> back-off</span>
       <span><b>${totalReps}</b> total reps</span>
       ${vol?`<span><b>${Math.round(vol).toLocaleString()}</b> lb volume</span>`:''}
@@ -3026,14 +3048,24 @@ function prescribe(rec, st){
 
     if(last.reps>=REP_HIGH || (rir!=null && rir>=3)){
       verdict='Add load'; cls='v-push';
-      if(target<=last.weight) target=snapWeight(last.weight+step,type);
+      /* Realistic micro-progression: a jump is a small PERCENTAGE of the load, rounded to
+         the smallest plate you own — never a fixed lump. Big jumps cost reps, and reps
+         near failure are the growth stimulus, so a miss is a step backwards. */
+      const pct=(DB.settings.progPct||2.5)/100;
+      const maxJump=Math.max(step, last.weight*pct*(rir!=null&&rir>=3?1.4:1));
+      const capped=Math.min(target, last.weight+maxJump);
+      target=snapWeight(Math.max(last.weight+step, capped), type);
       weight=target; reps=predictReps(target,oneRM,k,0,fat)||REP_LOW;
       const owned = last.reps>=REP_HIGH ? ` You owned the top of the ${REP_LOW}–${REP_HIGH} range, which is the signal to move up.` : '';
       why=`Last time: <b>${last.reps} reps @ ${dispW(last.weight)} lb</b>${avgRpe?` (RPE ${avgRpe.toFixed(1)}, ~${rir.toFixed(0)} in reserve)`:''}.${owned} ${modelTxt} That puts your working max near <b>${Math.round(oneRM)} lb</b>, so <b>${dispW(target)} lb</b> should land you at <b>~${reps} reps</b> — back inside ${REP_LOW}–${REP_HIGH}. ${trendTxt}`;
     }
     else if(last.reps<REP_LOW){
       verdict='Reduce'; cls='v-back';
+      const pct=(DB.settings.progPct||2.5)/100;
+      const maxDrop=Math.max(step, last.weight*pct*1.5);
+      target=Math.max(target, last.weight-maxDrop);
       if(target>=last.weight) target=Math.max(step,snapWeight(last.weight-step,type));
+      target=snapWeight(target,type);
       weight=target; reps=predictReps(target,oneRM,k,0,fat)||REP_TARGET;
       why=`<b>${last.reps} reps</b> is under the zone — that load sits above your ~${Math.round(oneRM)} lb working max for this range. ${modelTxt} <b>${dispW(target)} lb</b> projects to <b>~${reps} reps</b>. Volume inside ${REP_LOW}–${REP_HIGH} builds more than grinding heavy singles.`;
     }
@@ -3055,7 +3087,7 @@ function prescribe(rec, st){
   // when adding load, the first set must clear last session's best by a real margin
   let minFirstReps=0;
   if(verdict==='Add load' && w>0 && last.weight>0){
-    const wasCap=e1rmSet(last.weight,last.reps)*1.015;      // beat it by ~1.5%
+    const wasCap=e1rmSet(last.weight,last.reps)*1.005;      // just clear it — small, repeatable wins
     for(let r=1;r<=REP_HIGH+3;r++){ if(e1rmSet(w,r)>=wasCap){ minFirstReps=r; break; } }
   }
   for(let i=0;i<heavySets;i++){
@@ -3574,6 +3606,7 @@ const DEFAULT_PLATES=[0.25,0.5,0.75,1,1.25,2.5,5,10,25];
 function plates(){ const p=DB.settings.plates; return (p&&p.length)?p.slice().sort((a,b)=>a-b):DEFAULT_PLATES.slice(); }
 function openSettings(){
   $('stBw').value=DB.settings.bw||'';
+  $('stProg').value=String(DB.settings.progPct||2.5);
   renderPlateChips();
   renderIncFields();
   renderSnapshots();
@@ -3635,6 +3668,7 @@ function renderIncFields(){
 }
 $('stSave').onclick=()=>{
   DB.settings.bw=parseFloat($('stBw').value)||null;
+  DB.settings.progPct=parseFloat($('stProg').value)||2.5;
   const fine=parseFloat(($('inc-fine')||{}).value);
   if(fine>0) DB.settings.stepFine=fine;
   DB.settings.inc=DB.settings.inc||{};
@@ -3654,7 +3688,7 @@ $('bwBtn').onclick=openSettings;
 function loadBase(type){ return 0; }
 /* increment per equipment type — editable in Settings.
    Barbell/dumbbell values are TOTAL (half goes on each side). */
-const DEFAULT_INC={barbell:0.5, dumbbell:1, cable:1, machine:5, band:5, bodyweight:2.5};
+const DEFAULT_INC={barbell:0.5, dumbbell:0.5, cable:1, machine:5, band:5, bodyweight:2.5};
 function incFor(type){
   const s=DB.settings.inc||{};
   if(s[type]!=null) return s[type];
