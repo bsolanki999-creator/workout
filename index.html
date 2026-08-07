@@ -169,6 +169,7 @@
   .wv-lbl{width:76px; flex:none; font-size:10.5px; color:var(--ink-ghost); text-align:right}
   .routine-card{cursor:pointer; display:flex; align-items:center; gap:14px; padding:16px; transition:border-color .15s}
   .routine-card:hover{border-color:rgba(233,180,92,.3)}
+  .mono.past{background:var(--panel3); color:var(--ink-dim); font-size:22px}
   .mono.focus{background:linear-gradient(135deg,#B8A7E8,#8E7BD8); font-size:24px}
   .mono{
     width:48px; height:48px; border-radius:15px; flex:none;
@@ -651,6 +652,7 @@
 
     <div class="eyebrow" style="margin:4px 2px 10px">My workouts</div>
     <div id="routineList"></div>
+    <div id="pastList"></div>
     <button class="btn block" id="newRoutineBtn">＋ Create workout</button>
     <button class="btn ice block" id="logCardioBtn" style="margin-top:10px"><svg class="ic-svg " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Log cardio</button>
     <button class="btn block" id="quickLiftBtn" style="margin-top:10px"><svg class="ic-svg " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>Quick lift — one exercise</button>
@@ -1621,6 +1623,7 @@ function renderHome(){
   });
 
   renderReadiness(); renderToday(); renderWeekVolume(); renderRecovery(); renderNudge(); renderCoachAlerts();
+  renderPastSessions();
   // PR feed
   const prs=[];
   finished().forEach(s=>s.exercises.forEach(e=>e.sets.forEach(st=>{ if(st.pr) prs.push({t:st.t||s.start,name:e.name,st}); })));
@@ -3869,6 +3872,75 @@ $('readySave').onclick=()=>{
   toast(f<1?`Targets eased ${Math.round((1-f)*100)}% for today`:f>1?'Targets nudged up — good day to push':'Targets unchanged');
 };
 $('readySkip').onclick=()=>{ DB.settings.readySkip=todayKey(); saveDB(); renderReadiness(); };
+
+
+/* ---------- sessions logged without a saved workout ----------
+   Quick lifts and anything logged before a routine existed would otherwise
+   only live in History. Surface them here so they are one tap to repeat. */
+function orphanSessions(){
+  const byName={};
+  finished().forEach(s=>{
+    const hasRoutine = s.routineId && DB.routines.some(r=>r.id===s.routineId);
+    if(hasRoutine) return;
+    const key=s.group;
+    if(!byName[key] || s.start>byName[key].start) byName[key]=s;
+  });
+  return Object.values(byName).sort((a,b)=>b.start-a.start);
+}
+function renderPastSessions(){
+  const el=$('pastList'); if(!el) return;
+  const rows=orphanSessions();
+  if(!rows.length){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="eyebrow" style="margin:16px 2px 10px">Logged sessions · not saved as workouts</div>`
+   + rows.map((s,i)=>{
+    const sets=s.exercises.reduce((n,e)=>n+e.sets.length,0);
+    const names=s.exercises.filter(e=>e.sets.length).map(e=>e.name).join(' · ');
+    return `<div class="card routine-card" data-past="${i}">
+      <div class="mono ${s.lagging?'focus':'past'}">${s.lagging?'◎':'↺'}</div>
+      <div class="routine-main">
+        <div class="routine-name">${s.group}</div>
+        <div class="routine-sub">${names||'no exercises'}<br><b>${sets} set${sets!==1?'s':''}</b> · last done ${fmtDateLong(s.start)}</div>
+      </div>
+      <button class="iconbtn" data-save="${i}" title="Save as a workout" aria-label="Save as workout">+</button>
+      <button class="routine-go" data-repeat="${i}">REPEAT</button>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-repeat]').forEach(b=>b.onclick=async e=>{
+    e.stopPropagation();
+    const s=rows[+b.dataset.repeat];
+    if(!await parkActiveSession()) return;
+    active={ routineId:null, group:s.group, lagging:s.lagging||undefined, start:Date.now(), notes:'',
+      exercises:s.exercises.filter(e2=>e2.sets.length).map(e2=>{
+        const {sets, pred, ...rest}=e2;
+        const best=bestSet(sets);
+        return {...rest, startWeight: best.weight||rest.startWeight||0, targetReps: best.reps||rest.targetReps||8, sets:[]};
+      }) };
+    attachPredictions(active);
+    loggerState={}; saveDB(true);
+    $('sessNotes').value=''; show('session'); renderSession();
+    toast(`Repeating ${s.group}`);
+  });
+  el.querySelectorAll('[data-save]').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const s=rows[+b.dataset.save];
+    const rt={ id:'rt'+Date.now(), name:s.group,
+      focus: s.lagging ? {part:s.lagging.part, side:s.lagging.side} : undefined,
+      exercises:s.exercises.filter(e2=>e2.sets.length).map(e2=>{
+        const best=bestSet(e2.sets);
+        return { name:e2.name, type:e2.type||'dumbbell', variant:e2.variant||'', angle:e2.angle||'',
+          bandMode:e2.bandMode||'none', bandStrength:e2.bandStrength??'',
+          startWeight:best.weight||0, targetReps:best.reps||8, rest:e2.rest||90,
+          cue:e2.cue||'', tempo:e2.tempo||'', pic:e2.pic||null };
+      }) };
+    if(!rt.exercises.length) return toast('Nothing to save from that session');
+    DB.routines.push(rt);
+    // link past sessions of the same name so history and "last done" stay attached
+    DB.sessions.forEach(x=>{ if(!x.routineId && x.group===rt.name) x.routineId=rt.id; });
+    saveDB(true, true);
+    renderHome();
+    toast(`"${rt.name}" saved as a workout`);
+  });
+}
 
 /* ---------- what to train today ----------
    Ranks by how overdue each workout is. Because it is staleness-based, skipping a day
