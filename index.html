@@ -169,6 +169,7 @@
   .wv-lbl{width:76px; flex:none; font-size:10.5px; color:var(--ink-ghost); text-align:right}
   .routine-card{cursor:pointer; display:flex; align-items:center; gap:14px; padding:16px; transition:border-color .15s}
   .routine-card:hover{border-color:rgba(233,180,92,.3)}
+  .mono.focus{background:linear-gradient(135deg,#B8A7E8,#8E7BD8); font-size:24px}
   .mono{
     width:48px; height:48px; border-radius:15px; flex:none;
     background:var(--grad); color:#1B1408; font-family:var(--serif); font-weight:700; font-size:22px;
@@ -1600,7 +1601,7 @@ function renderHome(){
     const card=document.createElement('div');
     card.className='card routine-card';
     card.innerHTML=`
-      <div class="mono">${rt.name.trim().charAt(0).toUpperCase()}</div>
+      <div class="mono${rt.focus?' focus':''}">${rt.focus?'◎':rt.name.trim().charAt(0).toUpperCase()}</div>
       <div class="routine-main">
         <div class="routine-name">${rt.name}</div>
         <div class="routine-sub">
@@ -1608,10 +1609,13 @@ function renderHome(){
           <b>${rt.exercises.length} exercise${rt.exercises.length!==1?'s':''}</b>${last?` · last done ${fmtDateLong(last.start)}`:' · never done'}
         </div>
       </div>
+      ${rt.focus?`<button class="iconbtn" data-addfocus aria-label="Add exercise to this focus">+</button>`:''}
       <button class="iconbtn" data-edit aria-label="Edit workout"><svg class="ic-svg " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
       <button class="routine-go" data-start>START</button>`;
     card.querySelector('[data-start]').onclick=e=>{e.stopPropagation(); startFromRoutine(rt);};
     card.querySelector('[data-edit]').onclick=e=>{e.stopPropagation(); openBuilder(rt);};
+    const af=card.querySelector('[data-addfocus]');
+    if(af) af.onclick=e=>{ e.stopPropagation(); openLag(rt.focus); };
     card.onclick=()=>startFromRoutine(rt);
     list.appendChild(card);
   });
@@ -4123,13 +4127,21 @@ function setExPic(data){
 const LAG_PARTS = ["Biceps","Triceps","Forearms","Shoulders","Chest","Back","Glutes","Quads","Hamstrings","Calves","Abs"];
 const LAG_SIDES = ["Left","Right","Both"];
 let lagPart=null, lagSide=null, lagEx=null;
-function openLag(){
+function openLag(preset){
   lagPart=lagSide=lagEx=null;
   $('lagPartCustom').value=''; $('lagExName').value='';
   $('lagWeight').value=''; $('lagReps').value=''; $('lagRest').value='90';
   $('lagSideWrap').classList.add('hidden');
   $('lagExWrap').classList.add('hidden');
   renderLagParts(); renderLagHistory();
+  if(preset && preset.part){
+    lagPart=preset.part; lagSide=preset.side;
+    if(!LAG_PARTS.includes(preset.part)) $('lagPartCustom').value=preset.part;
+    renderLagParts(); showLagSides(); showLagExercises();
+    $('lagStartBtn').textContent='Add & start';
+  } else {
+    $('lagStartBtn').textContent='Start focus session';
+  }
   $('lagModal').classList.remove('hidden');
 }
 $('lagBtn').onclick=openLag;
@@ -4189,26 +4201,43 @@ $('lagStartBtn').onclick=async ()=>{
   const exName=$('lagExName').value.trim()||lagEx;
   if(!exName) return toast('Pick or type an exercise');
   if(!await parkActiveSession()) return;
+
   const label=`${part} (${lagSide})`;
+  const routineName=`Focus: ${label}`;
   const fullName=`${exName} — ${lagSide} ${part}`;   // unique name keeps its own history & charts
-  active={
-    routineId:null, group:`FOCUS: ${label}`, lagging:{part, side:lagSide},
-    start:Date.now(), notes:'',
-    exercises:[{
-      name: fullName, type:$('lagType').value,
-      variant:'', angle:'', bandMode:'none', bandStrength:'',
-      startWeight: parseFloat($('lagWeight').value)||0,
-      targetReps: parseInt($('lagReps').value)||8,
-      rest: parseInt($('lagRest').value)||90,
-      sets:[]
-    }]
+  const exercise={
+    name: fullName, type:$('lagType').value,
+    variant:'', angle:'', bandMode:'none', bandStrength:'',
+    startWeight: parseFloat($('lagWeight').value)||0,
+    targetReps: parseInt($('lagReps').value)||8,
+    rest: parseInt($('lagRest').value)||90
   };
+
+  // reuse the saved focus routine if it exists, so it accumulates exercises over time
+  let rt=DB.routines.find(r=>r.focus && r.focus.part===part && r.focus.side===lagSide);
+  if(rt){
+    if(!rt.exercises.some(e=>e.name.toLowerCase()===fullName.toLowerCase())){
+      rt.exercises.push(exercise);
+      toast(`Added ${exName} to ${routineName}`);
+    }
+  } else {
+    rt={id:'rt'+Date.now(), name:routineName, focus:{part, side:lagSide}, exercises:[exercise]};
+    DB.routines.push(rt);
+    toast(`${routineName} saved to your home screen`);
+  }
+  saveDB(true, true);
+
+  active={
+    routineId:rt.id, group:routineName, lagging:{part, side:lagSide},
+    start:Date.now(), notes:'',
+    exercises: rt.exercises.map(e=>({...e, sets:[]}))
+  };
+  attachPredictions(active);
   loggerState={};
-  saveDB();
+  saveDB(true);
   $('lagModal').classList.add('hidden');
   $('sessNotes').value='';
   show('session'); renderSession();
-  toast(`Focus session: ${label}`);
 };
 function renderLagHistory(){
   const el=$('lagHistory');
