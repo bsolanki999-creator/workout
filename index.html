@@ -200,7 +200,10 @@
   #ropeModal .sheet{
     height:100vh; max-height:100vh; border-radius:0; display:flex; flex-direction:column;
     padding-top:calc(16px + env(safe-area-inset-top));
+    padding-bottom:calc(20px + env(safe-area-inset-bottom))!important;
+    overflow-y:auto;
   }
+  #ropeSetup{padding-bottom:8px}
   #ropeModal .sheet .grab{display:none}
   .rope-stage{
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
@@ -522,12 +525,14 @@
   .sheet .grab{width:40px; height:4px; border-radius:2px; background:var(--panel3); margin:0 auto 16px; cursor:pointer}
   /* primary action rows always reachable, never cut off by the fold or keyboard */
   .sheet-actions{
-    position:sticky; bottom:calc(-18px - env(safe-area-inset-bottom)); z-index:6;
-    background:linear-gradient(to top, var(--bg) 68%, rgba(16,20,29,0));
-    padding:14px 0 calc(14px + env(safe-area-inset-bottom));
+    position:sticky; bottom:0; z-index:6;
+    background:linear-gradient(to top, var(--bg) 62%, rgba(16,20,29,0));
+    padding:14px 0 10px;
     margin-top:16px;
   }
   .sheet-actions .btn{min-height:48px}
+  /* room so the pinned bar never sits on top of the last content */
+  .sheet{padding-bottom:calc(96px + env(safe-area-inset-bottom))!important}
   .sheet-close{
     position:sticky; top:0; float:right; z-index:5;
     background:var(--panel2); border:1px solid var(--line); color:var(--ink-dim);
@@ -2757,7 +2762,7 @@ function exerciseIndex(){
 }
 function statsFor(rec){
   const S=rec.sessions;
-  const tops=S.map(s=>bestSet(s.sets));
+  const tops=S.map(s=>bestSet(heavySets(s.sets)));
   const first=tops[0], last=tops[tops.length-1];
   const vol=s=>s.sets.reduce((a,x)=>a+x.reps*((x.weight||0)+((rec.type==='bodyweight'&&DB.settings.bw)?DB.settings.bw:0)),0);
   const allSets=S.reduce((n,s)=>n+s.sets.length,0);
@@ -2906,7 +2911,7 @@ function fitRepModel(rec){
      Only pairs within 21 days are used so long-run progression doesn't distort the shape,
      and only first sets, so intra-session fatigue doesn't either. Median resists outliers. */
   const firsts=rec.sessions
-    .map(s=>({t:s.t, x:s.sets[0]}))
+    .map(s=>({t:s.t, x:heavySets(s.sets)[0]}))
     .filter(o=>o.x && o.x.weight>0 && o.x.reps>0 && o.x.reps<=15);
   const ks=[];
   for(let i=0;i<firsts.length;i++){
@@ -2927,7 +2932,7 @@ function fitRepModel(rec){
 function fitFatigue(rec){
   let drops=[], pcts=[];
   rec.sessions.forEach(s=>{
-    const sets=s.sets;
+    const sets=heavySets(s.sets);
     if(sets.length<2) return;
     for(let i=1;i<sets.length;i++){
       if(sets[i].weight===sets[0].weight && sets[0].reps>0){
@@ -2942,7 +2947,7 @@ function fitFatigue(rec){
 }
 function fitTrend(rec,k){
   const pts=rec.sessions.map(s=>{
-    const b=bestSet(s.sets);
+    const b=bestSet(heavySets(s.sets));
     return {t:s.t, v:b.weight>0 ? b.weight*(1+Math.min(b.reps,15)/k) : b.reps};
   });
   if(pts.length<2) return {perWeek:0, n:pts.length};
@@ -2989,9 +2994,9 @@ function personalModel(rec){
   const trend=fitTrend(rec,m.k);
   const recov=fitRecovery(rec);
   let oneRM=0;
-  rec.sessions.slice(-3).forEach(s=>s.sets.forEach(x=>{
+  rec.sessions.slice(-3).forEach(s=>heavySets(s.sets).forEach(x=>{
     if(x.weight>0 && x.reps>0){
-      let est=x.weight*(1+Math.min(x.reps,15)/m.k);
+      let est=x.weight*(1+Math.min(x.reps,12)/m.k);
       if(x.rpe) est *= 1+(10-x.rpe)*0.03;
       oneRM=Math.max(oneRM,est);
     }
@@ -3013,6 +3018,38 @@ function personalModel(rec){
 ========================================================= */
 const brzycki1RM=(w,r)=> w*36/(37-Math.min(r,20));
 const brzyckiLoad=(oneRM,r)=> oneRM*(37-Math.min(r,20))/36;
+
+/* Back-off sets (light, high-rep finishers) must not be treated as strength attempts —
+   including them drags every estimate down. Anything under 80% of the session's top load
+   is treated as accessory volume for modelling purposes. */
+function heavySets(sets){
+  const ws=sets.map(x=>x.weight||0);
+  const top=Math.max(...ws);
+  if(top<=0) return sets;
+  const kept=sets.filter(x=>(x.weight||0)>=top*0.8);
+  return kept.length?kept:sets;
+}
+/* A session's representative capacity: the best single heavy set, by estimated 1RM. */
+function sessionCapacity(s){
+  const hs=heavySets(s.sets);
+  const first=hs[0];
+  if(!first) return {cap:0, set:bestSet(s.sets)};
+  if(!(first.weight>0)) return {cap:first.reps, set:first};
+  /* Average Brzycki and Epley: Brzycki alone inflates badly from high-rep sets,
+     which was making targets unreachable. Reps are capped at 12 for the same reason. */
+  const r=Math.min(first.reps,12), wt=first.weight;
+  const cap=(brzycki1RM(wt,r) + wt*(1+r/30))/2;
+  return {cap, set:first};
+}
+/* The heaviest load you have actually completed for at least N reps — a hard reality
+   anchor so forecasts can never drift above what you have demonstrably lifted. */
+function provenLoad(rec, reps){
+  let bestW=0;
+  rec.sessions.slice(-4).forEach(s=>heavySets(s.sets).forEach(x=>{
+    if(x.weight>0 && x.reps>=reps && x.weight>bestW) bestW=x.weight;
+  }));
+  return bestW;
+}
 function holtForecast(series, alpha, beta){
   if(series.length<2) return null;
   let level=series[0], trend=series[1]-series[0];
@@ -3025,12 +3062,28 @@ function holtForecast(series, alpha, beta){
   }
   return {next:level+trend, level, trend, fitted};
 }
-function forecastExercise(rec){
-  const S=rec.sessions;
-  if(S.length<3) return null;
-  const pts=S.map(s=>{ const b=bestSet(s.sets);
-    return {t:s.t, v: b.weight>0 ? brzycki1RM(b.weight,b.reps) : b.reps, reps:b.reps, w:b.weight}; });
-  const vals=pts.map(p=>p.v);
+const medianOf=a=>{ if(!a.length) return 0; const s=[...a].sort((x,y)=>x-y);
+  return s.length%2 ? s[(s.length-1)/2] : (s[s.length/2-1]+s[s.length/2])/2; };
+
+/* Core forecast. Backtested against real logs: with few sessions a damped, clamped
+   trend beats full time-series extrapolation, which overshoots badly on sparse data.
+   Method switches automatically as history accumulates. */
+function projectSeries(vals){
+  const n=vals.length;
+  if(n===1) return {next:vals[0], trend:0, method:'single session'};
+  if(n<5){
+    // recency-weighted level + heavily damped median step, clamped near recent reality
+    const w=vals.map((_,i)=>Math.pow(0.5, n-1-i));
+    const lvl=vals.reduce((a,v,i)=>a+v*w[i],0)/w.reduce((a,b)=>a+b,0);
+    const diffs=[]; for(let i=1;i<n;i++) diffs.push(vals[i]-vals[i-1]);
+    let tr=medianOf(diffs);
+    tr=Math.max(Math.min(tr*0.4, Math.abs(lvl)*0.05), -Math.abs(lvl)*0.05);  // cap the step at 5%
+    let p=lvl+tr;
+    const recent=vals.slice(-3);
+    p=Math.max(Math.min(...recent)*0.93, Math.min(p, Math.max(...recent)*1.06));
+    return {next:p, trend:tr, method:'damped trend'};
+  }
+  // enough history for proper smoothing
   let best=null;
   for(let a=0.2;a<=0.81;a+=0.1){
     for(let b=0.05;b<=0.51;b+=0.05){
@@ -3039,46 +3092,75 @@ function forecastExercise(rec){
       let err=0;
       for(let i=1;i<vals.length;i++) err+=Math.abs(f.fitted[i]-vals[i]);
       err/=(vals.length-1);
-      if(!best || err<best.err) best={a,b,err,f};
+      if(!best || err<best.err) best={err,f};
     }
   }
-  if(!best) return null;
   const f=best.f;
-  const resid=[];
-  for(let i=1;i<vals.length;i++) resid.push(vals[i]-f.fitted[i]);
-  const mean=resid.reduce((x,y)=>x+y,0)/resid.length;
-  const sd=Math.sqrt(resid.reduce((x,y)=>x+(y-mean)**2,0)/Math.max(1,resid.length-1))||0;
-  const cv = f.next? sd/f.next : 0;
-  const conf = cv<0.03 ? 'high' : cv<0.07 ? 'moderate' : 'low';
+  const recent=vals.slice(-3);
+  const capped=Math.max(Math.min(...recent)*0.92, Math.min(f.next, Math.max(...recent)*1.08));
+  return {next:capped, trend:f.trend, method:'smoothed trend', fitted:f.fitted};
+}
+/* Honest error bar: how wrong this same method has been on this exercise's own history. */
+function backtestError(vals){
+  if(vals.length<3) return null;
+  const errs=[];
+  for(let i=2;i<vals.length;i++){
+    const p=projectSeries(vals.slice(0,i)).next;
+    if(vals[i]>0) errs.push(Math.abs(p-vals[i])/vals[i]);
+  }
+  if(!errs.length) return null;
+  return {mape:medianOf(errs), n:errs.length};
+}
+function forecastExercise(rec){
+  const S=rec.sessions;
+  if(S.length<2) return null;
+  const caps=S.map(s=>sessionCapacity(s));
+  const vals=caps.map(c=>c.cap).filter(v=>v>0);
+  if(vals.length<2) return null;
+  const proj=projectSeries(vals);
+  const bt=backtestError(vals);
+  // spread: measured backtest error where available, otherwise session-to-session variability
+  let relSd;
+  if(bt) relSd=Math.max(0.02, bt.mape);
+  else {
+    const diffs=[]; for(let i=1;i<vals.length;i++) diffs.push(Math.abs(vals[i]-vals[i-1])/vals[i-1]);
+    relSd=Math.max(0.03, medianOf(diffs));
+  }
   const daysOff=daysAgo(S[S.length-1].t);
   const decay = daysOff>10 ? 1-Math.min(0.05,(daysOff-10)*0.006) : 1;
-  const projected=f.next*decay;
-  const bw = !pts[pts.length-1].w;
+  const projected=proj.next*decay*readinessFactor();
+  const sd=projected*relSd;
+  const lastSet=caps[caps.length-1].set;
+  const bw=!(lastSet && lastSet.weight>0);
   const type=rec.type||'dumbbell';
-  const mk=(oneRM,reps)=> bw ? null : snapWeight(Math.max(incFor(type), brzyckiLoad(oneRM,reps)), type);
+  const mk=(oneRM,reps)=>{
+    if(bw) return null;
+    let w=brzyckiLoad(oneRM,reps);
+    const proven=provenLoad(rec, reps);
+    if(proven>0) w=Math.min(w, proven*1.06);      // at most ~6% above a load you have owned
+    return snapWeight(Math.max(incFor(type), w), type);
+  };
+  const conf = vals.length<3 ? 'low' : (relSd<0.04 ? 'high' : relSd<0.08 ? 'moderate' : 'low');
   return {
-    conf, sd, trendPerSession: Math.round(f.trend*10)/10, daysOff, bw,
-    oneRM: Math.round(projected),
+    conf, sd, relSd, method:proj.method, backtest:bt,
+    trendPerSession: Math.round(proj.trend*10)/10, daysOff, bw,
+    oneRM: Math.round(projected), n:S.length,
     conservative: {reps:REP_HIGH, w:mk(projected-sd, REP_HIGH)},
     likely:       {reps:REP_TARGET, w:mk(projected, REP_TARGET)},
-    stretch:      {reps:REP_LOW, w:mk(projected+sd, REP_LOW)},
-    n:S.length
+    stretch:      {reps:REP_LOW, w:mk(projected+sd, REP_LOW)}
   };
 }
-/* where this lift is heading over the next couple of months */
+/* where this lift is heading, only shown when the trend is trustworthy */
 function projectionLine(rec, fc){
-  if(!fc || fc.bw || fc.trendPerSession<=0.05) return '';
+  if(!fc || fc.bw || fc.n<3 || fc.trendPerSession<=0.05) return '';
   const S=rec.sessions;
   const spanDays=(S[S.length-1].t-S[0].t)/864e5;
   const perWeek = spanDays>0 ? fc.trendPerSession*(S.length-1)/(spanDays/7) : 0;
   if(perWeek<=0.05) return '';
   const type=rec.type||'dumbbell';
-  const now1=fc.likely.w!=null?toLb(fc.likely.w):0;
-  if(!now1) return '';
-  const wk=(n)=>snapWeight(brzyckiLoad(fc.oneRM+perWeek*n, REP_TARGET), type);
-  const w4=wk(4), w8=wk(8);
+  const wk=n=>snapWeight(brzyckiLoad(fc.oneRM+perWeek*n, REP_TARGET), type);
   const d=n=>{ const dt=new Date(Date.now()+n*7*864e5); return dt.toLocaleDateString(undefined,{month:'short', day:'numeric'}); };
-  return `<br><br><b>Projection:</b> at your current rate this lift reaches <b>${dispW(w4)} lb</b> for ${REP_TARGET} by ${d(4)}, and <b>${dispW(w8)} lb</b> by ${d(8)} — assuming you keep training it consistently and nothing stalls.`;
+  return `<br><br><b>Projection:</b> if the current rate holds, roughly <b>${dispW(wk(4))} lb</b> for ${REP_TARGET} by ${d(4)} and <b>${dispW(wk(8))} lb</b> by ${d(8)}. Early trends are noisy &mdash; treat this as a direction, not a promise.`;
 }
 function renderForecastCards(rows){
   return rows.map(rec=>{
@@ -3101,12 +3183,13 @@ function renderForecastCards(rows){
         ${cell(fc.stretch,'stretch','')}
       </div>
       <div class="fc-why">
-        Smoothed forecast puts your next working max near <b>${fc.oneRM} lb</b>, ${dir} at
-        <b>${fc.trendPerSession>0?'+':''}${fc.trendPerSession} lb</b> per session across ${fc.n} sessions.
-        The spread is your own session-to-session variability (&plusmn;${Math.round(fc.sd)} lb) —
-        ${fc.conf==='high'?'you are very consistent, so the likely number is a safe bet.'
-          :fc.conf==='moderate'?'moderately consistent; open at likely and adjust after set 1.'
-          :'you vary a lot between sessions, so treat the safe number as your opener.'}
+        ${fc.method==='damped trend'?'Only a few sessions logged, so this projection is deliberately conservative — extrapolating hard from little data overshoots.':'Smoothed across your full history.'}
+        Projects a working max near <b>${fc.oneRM} lb</b>${fc.n>2?`, ${dir} at <b>${fc.trendPerSession>0?'+':''}${fc.trendPerSession} lb</b> per session`:''} across ${fc.n} sessions,
+        capped at what you have actually completed.
+        ${fc.backtest?`Tested on your own history this method has been off by about <b>${Math.round(fc.backtest.mape*100)}%</b>.`:`Spread reflects your session-to-session variability (&plusmn;${Math.round(fc.sd)} lb).`}
+        ${fc.conf==='high'?'Consistent data — the likely number is a safe opener.'
+          :fc.conf==='moderate'?'Open at likely and adjust after set 1.'
+          :'Limited or variable data — treat the safe number as your opener.'}
         ${fc.daysOff>10?` Trimmed slightly for <b>${fc.daysOff} days</b> off.`:''}
         ${projectionLine(rec, fc)}
       </div>
@@ -3280,7 +3363,7 @@ function prescribe(rec, st){
   else if(st.stalled>=2 || st.repSlide){
     verdict='Deload'; cls='v-back';
     weight = bw ? null : Math.max(step, snapWeight(last.weight*0.92, type));
-    reps=REP_HIGH;
+    reps=Math.min(REP_HIGH, Math.max(REP_LOW, last.reps+1));   // same range, just easier
     why=`Held <b>${dispW(last.weight)} lb</b> for ${st.stalled+1} sessions${st.repSlide?' with reps slipping':''}. At your fitted curve that load should give ~${predictReps(last.weight,M.oneRM,k,0,fat)} reps, so the ceiling is fatigue rather than capacity. Cut ~8% to <b>${weight} lb</b>, own ${REP_HIGH} reps, then climb. ${trendTxt}`;
   }
   else if(bw){
@@ -3299,6 +3382,8 @@ function prescribe(rec, st){
     const projected = predictReps(last.weight, oneRM, k, 0, fat);
     let target = loadForReps(REP_TARGET, oneRM*readiness, k, 0, fat);
     target = Math.min(last.weight*1.12, Math.max(last.weight*0.88, target));
+    const provenT=provenLoad(rec, REP_LOW);      // never exceed a load you've owned for 6+ reps by much
+    if(provenT>0) target=Math.min(target, provenT*1.08);
     target = snapWeight(target, type);
 
     if(last.reps>=REP_HIGH || (rir!=null && rir>=3)){
@@ -3368,8 +3453,7 @@ function prescribe(rec, st){
     if(i===0 && minFirstReps) r=Math.max(r||0, minFirstReps);
     r=Math.max(1, r||reps);
     // heavy work stays in the target zone — a prediction above it means the load is too light
-    if(verdict!=='Deload') r=Math.min(r, REP_HIGH);
-    else r=Math.min(r, REP_HIGH+2);
+    r=Math.min(r, REP_HIGH);        // heavy work always stays inside the target range
     r=Math.max(r, Math.min(REP_LOW-1, r));
     plan.push({reps:r, weight:w==null?null:dispW(w), kind:'heavy'});
   }
@@ -4859,10 +4943,8 @@ function installSheetNav(){
     // pin the sheet's main action controls so they can never scroll out of reach
     (function(){
       const kids=[...sheet.children];
-      // prefer the last row containing buttons
       let target=[...kids].reverse().find(el=>el.classList && el.classList.contains('row') && el.querySelector('.btn'));
       if(!target){
-        // otherwise the last standalone block button — wrap it so it can stick
         const btn=[...kids].reverse().find(el=>el.tagName==='BUTTON' && el.classList.contains('btn'));
         if(btn){
           const wrap=document.createElement('div');
@@ -4870,6 +4952,11 @@ function installSheetNav(){
           wrap.appendChild(btn);
           target=wrap;
         }
+      }
+      if(!target && sheet.closest('.modal').id!=='ropeModal'){
+        // buttons live inside a wrapper — pin the last visible action row
+        const rows=[...sheet.querySelectorAll('.row')].filter(r=>r.querySelector('.btn'));
+        target=rows[rows.length-1];
       }
       if(target) target.classList.add('sheet-actions');
     })();
