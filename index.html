@@ -160,8 +160,10 @@
   .wv-row{display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13.5px}
   .wv-row:last-child{border-bottom:none}
   .wv-name{width:78px; flex:none; font-weight:600}
-  .wv-bar{flex:1; height:5px; border-radius:3px; background:var(--panel3); overflow:hidden}
-  .wv-bar i{display:block; height:100%; border-radius:3px; background:var(--grad)}
+  .wv-bar{flex:1; height:5px; border-radius:3px; background:var(--panel3); overflow:hidden; position:relative}
+  /* the 10–20 hard-set growth range, drawn behind the fill (10/25=40%, 20/25=80%) */
+  .wv-bar .band{position:absolute; left:40%; width:40%; top:0; bottom:0; background:rgba(123,201,143,.14); border-left:1px solid rgba(123,201,143,.45); border-right:1px solid rgba(123,201,143,.45)}
+  .wv-bar i{display:block; height:100%; border-radius:3px; background:var(--grad); position:relative}
   .wv-bar i.low{background:var(--ink-ghost)}
   .wv-bar i.high{background:linear-gradient(135deg,#E8756B,#C9524A)}
   .wv-n{width:24px; flex:none; text-align:right; font-weight:700; font-variant-numeric:tabular-nums}
@@ -194,6 +196,13 @@
   .rec-days{font-variant-numeric:tabular-nums; font-weight:700}
   .rec-bar{height:4px; border-radius:2px; background:var(--panel3); width:64px; overflow:hidden; flex:none}
   .rec-bar i{display:block; height:100%; border-radius:2px; background:var(--grad)}
+  .rec-bar i.rec-ok{background:var(--green)}
+  .rec-bar i.rec-due{background:var(--grad)}
+  .rec-bar i.rec-over{background:linear-gradient(135deg,#E8756B,#C9524A)}
+  .rec-tgt{flex:none; font-size:10.5px; color:var(--ink-ghost)}
+  .rec-trend{font-size:9px; vertical-align:1px}
+  .rec-trend.up{color:var(--green)}
+  .rec-trend.dn{color:var(--red)}
   /* calendar heat map */
   /* jump rope takes the whole screen */
   #ropeModal{align-items:stretch}
@@ -651,8 +660,18 @@
     </div>
 
     <div class="card" id="recoveryCard" style="padding:14px 16px">
-      <div class="eyebrow">Last trained · past 2 weeks</div>
-      <div id="recoveryList"></div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap">
+        <div class="eyebrow" style="margin:0">Last trained</div>
+        <div class="chips" id="recoveryWinChips" style="gap:5px">
+          <button class="chip" data-win="14" style="padding:4px 9px; font-size:11.5px">2w</button>
+          <button class="chip" data-win="30" style="padding:4px 9px; font-size:11.5px">1m</button>
+          <button class="chip" data-win="60" style="padding:4px 9px; font-size:11.5px">2m</button>
+          <button class="chip" data-win="90" style="padding:4px 9px; font-size:11.5px">3m</button>
+          <button class="chip" data-win="180" style="padding:4px 9px; font-size:11.5px">6m</button>
+          <button class="chip" data-win="365" style="padding:4px 9px; font-size:11.5px">1y</button>
+        </div>
+      </div>
+      <div id="recoveryList" style="margin-top:8px"></div>
     </div>
 
     <div class="eyebrow" style="margin:4px 2px 10px">My workouts</div>
@@ -1987,10 +2006,10 @@ function renderWeekVolume(){
   el.innerHTML=rows.map(([m,n])=>{
     const state = n<10 ? 'low' : n<=20 ? 'good' : 'high';
     const label = state==='low' ? 'below range' : state==='good' ? 'in range' : 'above range';
-    const pct=Math.min(100, n/20*100);
+    const pct=Math.min(100, n/25*100);                 // scale to 25 so the 10–20 band sits inside the bar
     return `<div class="wv-row">
       <span class="wv-name">${m}</span>
-      <span class="wv-bar"><i class="${state}" style="width:${pct}%"></i></span>
+      <span class="wv-bar"><span class="band"></span><i class="${state}" style="width:${pct}%"></i></span>
       <span class="wv-n ${state}">${n}</span>
       <span class="wv-lbl">${label}</span>
     </div>`;
@@ -2003,6 +2022,11 @@ function renderCoachAlerts(){
   const msgs=[];
   const sf=systemicFatigue();
   if(sf) msgs.push(`<b style="color:var(--gold)">Deload week recommended.</b> ${sf.slipping} of ${sf.tracked} tracked lifts are stalling or losing reps at once — that pattern is systemic fatigue, not a strength ceiling. Take one week at ~60% of your usual load and volume, then resume; most lifters come back past their old bests within two sessions.`);
+  // readiness-based deload: check-ins trending low while volume stays high for 3 straight weeks
+  if(!sf){
+    const rd=readinessDeload();
+    if(rd) msgs.push(`<b style="color:var(--gold)">Consider a lighter week.</b> Your check-ins have averaged low (${rd.avg.toFixed(1)}/2 across ${rd.n} entries) while you've logged ${rd.weeks.join(' / ')} hard sets over the last 3 weeks. Low sleep, soreness and energy alongside sustained high volume is the classic setup for a plateau — one week at ~60% usually pays for itself.`);
+  }
   const stale=staleExercises();
   if(stale.length) msgs.push(`<b style="color:var(--gold)">Time to rotate.</b> ${stale.map(s=>s.name).join(', ')} ${stale.length>1?'have':'has'} been flat for ${stale[0].weeks}+ weeks. Swapping to a close variation (different angle, grip, or implement) usually restarts progress — your history stays intact either way.`);
   const v=weeklyMuscleVolume(7);
@@ -2014,6 +2038,27 @@ function renderCoachAlerts(){
 }
 
 /* ---------- systemic deload detection ---------- */
+/* Readiness-based version: sleep/soreness/energy check-ins averaging low over
+   the last 10 days, while weekly hard-set volume has stayed high for 3 straight
+   weeks. Needs at least 3 check-ins so one bad night doesn't trigger it. */
+function hardSetsBetween(from,to){
+  let n=0;
+  finished().filter(s=>s.start>=from&&s.start<to)
+    .forEach(s=>s.exercises.forEach(e=>{ n+=e.sets.filter(x=>x.fb!=='easy').length; }));
+  return n;
+}
+function readinessDeload(){
+  const R=DB.readiness||{};
+  const cutoff=Date.now()-10*864e5;
+  const vals=Object.values(R).filter(r=>r.t>=cutoff).map(r=>(r.sleep+r.sore+r.energy)/3);
+  if(vals.length<3) return null;
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  if(avg>=1.0) return null;                              // check-ins aren't actually low
+  const now=Date.now(), wk=7*864e5;
+  const weeks=[2,1,0].map(w=>hardSetsBetween(now-(w+1)*wk, now-w*wk));
+  if(weeks.every(n=>n>=30)) return {avg, n:vals.length, weeks};
+  return null;
+}
 function systemicFatigue(){
   const recent=finished().filter(s=>s.start>=Date.now()-28*864e5).sort((a,b)=>a.start-b.start);
   if(recent.length<6) return null;
@@ -3872,27 +3917,92 @@ function lastTrainedMap(){
   });
   return map;
 }
+function recoveryWindow(){ return DB.settings.recoveryWindow||14; }
+/* Per-muscle recovery targets: ideal days between sessions for each group.
+   Defaults: 4 days for lifting groups, 3 for cardio. Tap a row to change. */
+function recTargetFor(key, kind){
+  const t=(DB.settings.recTargets||{})[key];
+  return t || (kind==='cardio'?3:4);
+}
+/* How many sessions of this group/activity landed between two timestamps —
+   used to compare training frequency in the current window vs the one before it. */
+function sessionCountFor(key, from, to){
+  let n=0;
+  finished().forEach(s=>{
+    const k = s.lagging ? `${s.lagging.part} (${s.lagging.side})` : s.group;
+    if(k===key && s.start>=from && s.start<to) n++;
+  });
+  DB.cardio.forEach(c=>{ if(c.activity===key && c.t>=from && c.t<to) n++; });
+  return n;
+}
 function renderRecovery(){
   const el=$('recoveryList'); if(!el) return;
+  const win=recoveryWindow();
+  const winLabel = {14:'2 weeks',30:'month',60:'2 months',90:'3 months',180:'6 months',365:'year'}[win]||`${win} days`;
+  // highlight the active chip
+  document.querySelectorAll('#recoveryWinChips .chip').forEach(c=>{
+    c.classList.toggle('sel', +c.dataset.win===win);
+  });
   const map=lastTrainedMap();
-  const cutoff=Date.now()-14*864e5;
+  const now=Date.now();
+  const cutoff=now-win*864e5;
   const rows=Object.entries(map).filter(([,v])=>v.t>=cutoff).sort((a,b)=>b[1].t-a[1].t);
   if(!rows.length){
-    el.innerHTML='<div class="rec-none">Nothing logged in the past 2 weeks. Anything you train will appear here with days since.</div>';
+    el.innerHTML=`<div class="rec-none">Nothing logged in the past ${winLabel}. Anything you train will appear here with days since.</div>`;
     return;
   }
   el.innerHTML=rows.map(([name,v])=>{
     const days=daysAgo(v.t);
-    const label = days===0?'today' : days===1?'yesterday' : `${days} days`;
-    const stale = days>=7;
-    const pct=Math.max(6, Math.min(100, (days/14)*100));
-    return `<div class="rec-row">
-      <span class="rec-name">${name}</span>
-      <span class="rec-bar"><i style="width:${pct}%"></i></span>
-      <span class="rec-days" style="color:${stale?'var(--gold)':'var(--ink-dim)'}">${label}</span>
+    const label = days===0?'today' : days===1?'yesterday' : `${days}d`;
+    const target=recTargetFor(name, v.kind);
+    // color by how overdue vs the target: on schedule → green, a bit late → gold, way late → red
+    const ratio=days/target;
+    const cls = ratio<=1 ? 'rec-ok' : ratio<=1.75 ? 'rec-due' : 'rec-over';
+    const col = ratio<=1 ? 'var(--green)' : ratio<=1.75 ? 'var(--gold)' : 'var(--red)';
+    const pct=Math.max(6, Math.min(100, (days/(target*2))*100));  // bar full at 2× target
+    // frequency trend: this window vs the previous window of equal length
+    const cur=sessionCountFor(name, cutoff, now);
+    const prev=sessionCountFor(name, cutoff-win*864e5, cutoff);
+    let arrow='';
+    if(prev>0 || cur>0){
+      if(cur>prev) arrow=`<span class="rec-trend up" title="Trained more often than the previous ${winLabel}">▲</span>`;
+      else if(cur<prev) arrow=`<span class="rec-trend dn" title="Trained less often than the previous ${winLabel}">▼</span>`;
+    }
+    return `<div class="rec-row" data-key="${name.replace(/"/g,'&quot;')}" data-kind="${v.kind}" style="cursor:pointer" title="Tap to set target frequency">
+      <span class="rec-name">${name} ${arrow}</span>
+      <span class="rec-tgt">every ${target}d</span>
+      <span class="rec-bar"><i class="${cls}" style="width:${pct}%"></i></span>
+      <span class="rec-days" style="color:${col}">${label}</span>
     </div>`;
   }).join('');
+  // tap a row to set its target frequency
+  el.querySelectorAll('.rec-row').forEach(r=>{
+    r.onclick=()=>{
+      const key=r.dataset.key, kind=r.dataset.kind;
+      const cur=recTargetFor(key, kind);
+      const ans=prompt(`Train "${key}" every how many days?\n(Current target: ${cur} days. This sets when the bar turns gold/red.)`, cur);
+      if(ans==null) return;
+      const n=Math.round(+ans);
+      if(!n || n<1 || n>30){ toast('Enter 1–30 days'); return; }
+      DB.settings.recTargets=DB.settings.recTargets||{};
+      DB.settings.recTargets[key]=n;
+      saveDB();
+      renderRecovery();
+      toast(`${key}: target every ${n} days`);
+    };
+  });
 }
+// window toggle: 2w / 1mo / 2mo — persisted in settings
+(function(){
+  const wrap=document.getElementById('recoveryWinChips');
+  if(!wrap) return;
+  wrap.addEventListener('click', e=>{
+    const btn=e.target.closest('.chip'); if(!btn) return;
+    DB.settings.recoveryWindow=+btn.dataset.win;
+    saveDB();
+    renderRecovery();
+  });
+})();
 
 
 /* ---------- optional readiness check-in ----------
@@ -4540,7 +4650,10 @@ function drawChart(data){
   const W=c.width,H=c.height;
   ctx.clearRect(0,0,W,H);
   if(!data.length){ ctx.fillStyle='#8B93A5'; ctx.font='14px Outfit, sans-serif'; ctx.fillText('Nothing to chart yet.',20,H/2); return; }
-  const pts=data.map(({s,ex})=>({t:s.start, top:bestSet(ex.sets).weight, vol:exVol(ex)}));
+  const pts=data.map(({s,ex})=>{
+    const b=bestSet(ex.sets);
+    return {t:s.start, top:b.weight, vol:exVol(ex), e1:b.weight>0?e1rmSet(b.weight,b.reps):0};
+  });
   const pad=34;
   const xs=i=>pts.length===1?W/2:pad+(W-2*pad)*i/(pts.length-1);
   function line(vals,color){
@@ -4554,9 +4667,11 @@ function drawChart(data){
     return {mx,mn};
   }
   line(pts.map(p=>dispW(p.vol)),'#3C5666');
+  const hasE1=pts.some(p=>p.e1>0);
+  if(hasE1) line(pts.map(p=>dispW(p.e1)),'#B8A7E8');    // est. 1RM trend (lavender)
   const r=line(pts.map(p=>dispW(p.top)),'#E9B45C');
   ctx.fillStyle='#8B93A5'; ctx.font='12px Outfit, sans-serif';
-  ctx.fillText(`top set ${uLbl()} (amber) · volume (teal)`, pad, 16);
+  ctx.fillText(`top set ${uLbl()} (amber)${hasE1?' · est 1RM (lavender)':''} · volume (teal)`, pad, 16);
   ctx.fillText(Math.round(r.mx),4,pad+4);
   ctx.fillText(Math.round(r.mn),4,H-pad+4);
   ctx.fillText(fmtDate(pts[0].t),pad,H-8);
