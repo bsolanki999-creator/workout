@@ -2925,7 +2925,7 @@ function renderStats(){
     if(st.delta<0) flags.push('<span class="flag dn">Declining</span>');
     if(st.stalled>=2) flags.push(`<span class="flag warn">Stalled ${st.stalled+1} sessions</span>`);
     if(st.repSlide) flags.push('<span class="flag dn">Reps slipping</span>');
-    if(st.days>=10) flags.push(`<span class="flag warn">Not trained ${st.days}d</span>`);
+    if(st.days>=10 && st.S.length>=3) flags.push(`<span class="flag warn">Not trained ${st.days}d</span>`);  // one-offs aren't "overdue"
     if(st.prs) flags.push(`<span class="flag pr">★ ${st.prs} PR${st.prs>1?'s':''}</span>`);
     card.innerHTML=`
       <div class="stat-top">
@@ -3956,12 +3956,26 @@ function lastTrainedMap(){
   const map={};
   finished().forEach(s=>{
     const key = s.lagging ? `${s.lagging.part} (${s.lagging.side})` : s.group;
-    if(!map[key] || s.start>map[key].t) map[key]={t:s.start, sets:s.exercises.reduce((n,e)=>n+e.sets.length,0), kind:'lift'};
+    const cur=map[key];
+    if(!cur){ map[key]={t:s.start, sets:s.exercises.reduce((n,e)=>n+e.sets.length,0), kind:'lift', maxEx:s.exercises.length, focus:!!s.lagging}; }
+    else{
+      cur.maxEx=Math.max(cur.maxEx, s.exercises.length);
+      if(s.start>cur.t){ cur.t=s.start; cur.sets=s.exercises.reduce((n,e)=>n+e.sets.length,0); }
+    }
   });
   DB.cardio.forEach(c=>{
-    if(!map[c.activity] || c.t>map[c.activity].t) map[c.activity]={t:c.t, sets:0, kind:'cardio'};
+    if(!map[c.activity] || c.t>map[c.activity].t) map[c.activity]={t:c.t, sets:0, kind:'cardio', maxEx:0, focus:false};
   });
   return map;
+}
+/* Accessory / isolation work: single-exercise (≤2) sessions and FOCUS routines are
+   auto-classified; tapping a row and entering 0 toggles it manually either way.
+   Accessory rows are listed separately and never flagged overdue — a one-off set of
+   diamond pushups shouldn't nag you like a skipped Biceps day. */
+function isAccessory(key, v){
+  const man=(DB.settings.recAccessory||{})[key];
+  if(man!=null) return !!man;
+  return !!(v && v.kind==='lift' && (v.focus || v.maxEx<=2));
 }
 function recoveryWindow(){ return DB.settings.recoveryWindow||14; }
 /* Per-muscle recovery targets: ideal days between sessions for each group.
@@ -3997,39 +4011,52 @@ function renderRecovery(){
     el.innerHTML=`<div class="rec-none">Nothing logged in the past ${winLabel}. Anything you train will appear here with days since.</div>`;
     return;
   }
-  el.innerHTML=rows.map(([name,v])=>{
+  const mkRow=([name,v],acc)=>{
     const days=daysAgo(v.t);
     const label = days===0?'today' : days===1?'yesterday' : `${days}d`;
     const target=recTargetFor(name, v.kind);
-    // color by how overdue vs the target: on schedule → green, a bit late → gold, way late → red
+    // main rows color by how overdue vs target; accessory rows stay neutral — no nagging
     const ratio=days/target;
-    const cls = ratio<=1 ? 'rec-ok' : ratio<=1.75 ? 'rec-due' : 'rec-over';
-    const col = ratio<=1 ? 'var(--green)' : ratio<=1.75 ? 'var(--gold)' : 'var(--red)';
-    const pct=Math.max(6, Math.min(100, (days/(target*2))*100));  // bar full at 2× target
+    const cls = acc ? 'rec-ok' : ratio<=1 ? 'rec-ok' : ratio<=1.75 ? 'rec-due' : 'rec-over';
+    const col = acc ? 'var(--ink-dim)' : ratio<=1 ? 'var(--green)' : ratio<=1.75 ? 'var(--gold)' : 'var(--red)';
+    const pct = acc ? 6 : Math.max(6, Math.min(100, (days/(target*2))*100));  // bar full at 2× target
     // frequency trend: this window vs the previous window of equal length
     const cur=sessionCountFor(name, cutoff, now);
     const prev=sessionCountFor(name, cutoff-win*864e5, cutoff);
     let arrow='';
-    if(prev>0 || cur>0){
+    if(!acc && (prev>0 || cur>0)){
       if(cur>prev) arrow=`<span class="rec-trend up" title="Trained more often than the previous ${winLabel}">▲</span>`;
       else if(cur<prev) arrow=`<span class="rec-trend dn" title="Trained less often than the previous ${winLabel}">▼</span>`;
     }
-    return `<div class="rec-row" data-key="${name.replace(/"/g,'&quot;')}" data-kind="${v.kind}" style="cursor:pointer" title="Tap to set target frequency">
+    return `<div class="rec-row" data-key="${name.replace(/"/g,'&quot;')}" data-kind="${v.kind}" style="cursor:pointer${acc?';opacity:.72':''}" title="Tap to set target frequency${acc?' or unmark as accessory':''}">
       <span class="rec-name">${name} ${arrow}</span>
-      <span class="rec-tgt">every ${target}d</span>
+      <span class="rec-tgt">${acc?'accessory':'every '+target+'d'}</span>
       <span class="rec-bar"><i class="${cls}" style="width:${pct}%"></i></span>
       <span class="rec-days" style="color:${col}">${label}</span>
     </div>`;
-  }).join('');
-  // tap a row to set its target frequency
+  };
+  const main=rows.filter(r=>!isAccessory(r[0],r[1]));
+  const acc=rows.filter(r=>isAccessory(r[0],r[1]));
+  el.innerHTML = main.map(r=>mkRow(r,false)).join('')
+    + (acc.length?`<div class="rec-none" style="margin-top:10px; padding-top:8px; border-top:1px solid var(--line)">Accessory & isolation work — tracked quietly, never flagged overdue</div>`
+      + acc.map(r=>mkRow(r,true)).join(''):'');
+  // tap a row to set its target frequency, or enter 0 to toggle accessory status
   el.querySelectorAll('.rec-row').forEach(r=>{
     r.onclick=()=>{
       const key=r.dataset.key, kind=r.dataset.kind;
       const cur=recTargetFor(key, kind);
-      const ans=prompt(`Train "${key}" every how many days?\n(Current target: ${cur} days. This sets when the bar turns gold/red.)`, cur);
+      const accNow=isAccessory(key, map[key]);
+      const ans=prompt(`Train "${key}" every how many days?\n(Current target: ${cur} days. This sets when the bar turns gold/red.)\n\nEnter 0 to ${accNow?'move it back to main workouts':'mark it as accessory — listed separately, never flagged overdue'}.`, cur);
       if(ans==null) return;
       const n=Math.round(+ans);
-      if(!n || n<1 || n>30){ toast('Enter 1–30 days'); return; }
+      if(n===0){
+        DB.settings.recAccessory=DB.settings.recAccessory||{};
+        DB.settings.recAccessory[key]=!accNow;
+        saveDB(); renderRecovery();
+        toast(`${key}: ${!accNow?'marked as accessory':'back with main workouts'}`);
+        return;
+      }
+      if(!n || n<1 || n>30){ toast('Enter 1–30 days (or 0 to toggle accessory)'); return; }
       DB.settings.recTargets=DB.settings.recTargets||{};
       DB.settings.recTargets[key]=n;
       saveDB();
