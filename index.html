@@ -1484,9 +1484,15 @@ function sessionsWithExercise(name){
 function bestSet(sets){ if(!sets.length) return null; return [...sets].sort((a,b)=>(b.weight-a.weight)||(b.reps-a.reps))[0]; }
 function historicalBest(name){
   let best=null;
-  sessionsWithExercise(name).forEach(({ex})=>{
-    const b=bestSet(ex.sets);
-    if(b && (!best || b.weight>best.weight || (b.weight===best.weight && b.reps>best.reps))) best=b;
+  const all=[];
+  sessionsWithExercise(name).forEach(({ex})=>ex.sets.forEach(s=>all.push(s)));
+  if(!all.length) return null;
+  // ignore data-entry outliers (a typo'd weight must not stand as the "best")
+  const ws=all.map(s=>s.weight||0).sort((a,b)=>a-b);
+  const med=ws[Math.floor(ws.length/2)];
+  const pool = med>0 ? all.filter(s=>(s.weight||0)<=med*2.5+10) : all;
+  (pool.length?pool:all).forEach(b=>{
+    if(!best || b.weight>best.weight || (b.weight===best.weight && b.reps>best.reps)) best=b;
   });
   return best;
 }
@@ -1851,6 +1857,11 @@ function repRangeRec(ex,set){
   const oneRM=e1rmSet(set.weight,set.reps);
   const fatigue=Math.min(0.08, 0.02*Math.max(0,ex.sets.length-1));
   const loadTip=w=>{ const ps=perSide(w,ex.type); return ps?` · per side: ${ps}`:''; };
+
+  // A miss straight after a rushed rest is a rest problem, not a load problem — hold the weight.
+  if(set.reps<REP_LOW && set.restTaken!=null && set.restTaken<45 && set.reps>=REP_LOW-3){
+    return {w:set.weight, note:`${set.reps} reps after only <b>${set.restTaken}s</b> rest — that miss is about recovery, not the load. Hold ${dispW(set.weight)} lb and take the full ${ex.rest||90}s this time.${loadTip(set.weight)}`};
+  }
 
   // in range — RPE decides whether to hold or nudge up
   if(set.reps>=REP_LOW && set.reps<=REP_HIGH){
@@ -2336,6 +2347,14 @@ function logSet(xi,repeat,isFinal){
   if(repeat && ex.sets.length){ const last=ex.sets[ex.sets.length-1]; reps=last.reps; weight=last.weight; }
   else{ syncLogger(xi); reps=loggerState[xi].reps; weight=loggerState[xi].weight; }
   if(!reps) return toast('Enter reps first');
+  // Sanity guard: catch fat-finger entries (e.g. 1205 instead of 20.5) before they
+  // become fake PRs and poison every model fit downstream.
+  {
+    const hbg=historicalBest(ex.name);
+    const refW=Math.max(hbg?hbg.weight:0, ex.startWeight||0, ex.sets.length?ex.sets[ex.sets.length-1].weight:0);
+    const suspicious = weight>1000 || reps>30 || (refW>0 && weight>refW*2 && (weight-refW)>15);
+    if(suspicious && !confirm(`${dispW(weight)} ${unit()} × ${reps} looks like a typo (best on record: ${refW?dispW(refW)+' '+unit():'—'}). Log it anyway?`)) return;
+  }
   const set={reps,weight,t:Date.now()};
   if(loggerState[xi] && loggerState[xi].rpe) set.rpe=loggerState[xi].rpe;
   // actual rest since the previous set was logged
@@ -3008,7 +3027,7 @@ function fitRecovery(rec){
   for(let i=1;i<S.length;i++){
     const gap=Math.round((S[i].t-S[i-1].t)/864e5);
     const b=gap<=1?'1 day':gap<=3?'2-3 days':gap<=5?'4-5 days':gap<=8?'6-8 days':'9+ days';
-    const prev=bestSet(S[i-1].sets), cur=bestSet(S[i].sets);
+    const prev=bestSet(heavySets(S[i-1].sets)), cur=bestSet(heavySets(S[i].sets));
     if(!prev.reps) continue;
     const delta = prev.weight>0
       ? (cur.weight*(1+cur.reps/30))/(prev.weight*(1+prev.reps/30))-1
@@ -3068,11 +3087,18 @@ const brzyckiLoad=(oneRM,r)=> oneRM*(37-Math.min(r,20))/36;
    including them drags every estimate down. Anything under 80% of the session's top load
    is treated as accessory volume for modelling purposes. */
 function heavySets(sets){
-  const ws=sets.map(x=>x.weight||0);
+  /* First discard obvious data-entry errors: a set miles above the median of its own
+     session (e.g. a 1205 lb typo) would otherwise define "top" and eject every real set. */
+  let S=sets;
+  if(S.length>=2){
+    const med=medianOf(S.map(x=>x.weight||0));
+    if(med>0){ const kept=S.filter(x=>(x.weight||0)<=med*2.5+10); if(kept.length) S=kept; }
+  }
+  const ws=S.map(x=>x.weight||0);
   const top=Math.max(...ws);
-  if(top<=0) return sets;
-  const kept=sets.filter(x=>(x.weight||0)>=top*0.8);
-  return kept.length?kept:sets;
+  if(top<=0) return S;
+  const kept=S.filter(x=>(x.weight||0)>=top*0.8);
+  return kept.length?kept:S;
 }
 /* A session's representative capacity: the best single heavy set, by estimated 1RM. */
 function sessionCapacity(s){
@@ -3190,9 +3216,11 @@ function forecastExercise(rec){
     conf, sd, relSd, method:proj.method, backtest:bt,
     trendPerSession: Math.round(proj.trend*10)/10, daysOff, bw,
     oneRM: Math.round(projected), n:S.length,
-    conservative: {reps:REP_HIGH, w:mk(projected-sd, REP_HIGH)},
-    likely:       {reps:REP_TARGET, w:mk(projected, REP_TARGET)},
-    stretch:      {reps:REP_LOW, w:mk(projected+sd, REP_LOW)}
+    /* Bodyweight: the series being projected IS reps, so forecast reps directly
+       instead of parroting the fixed 6–8 range (which badly undersold e.g. dips). */
+    conservative: bw ? {reps:Math.max(1,Math.round(projected-sd)), w:null} : {reps:REP_HIGH, w:mk(projected-sd, REP_HIGH)},
+    likely:       bw ? {reps:Math.max(1,Math.round(projected)),    w:null} : {reps:REP_TARGET, w:mk(projected, REP_TARGET)},
+    stretch:      bw ? {reps:Math.max(1,Math.round(projected+sd)), w:null} : {reps:REP_LOW, w:mk(projected+sd, REP_LOW)}
   };
 }
 /* where this lift is heading, only shown when the trend is trustworthy */
@@ -3429,6 +3457,9 @@ function prescribe(rec, st){
     target = Math.min(last.weight*1.12, Math.max(last.weight*0.88, target));
     const provenT=provenLoad(rec, REP_LOW);      // never exceed a load you've owned for 6+ reps by much
     if(provenT>0) target=Math.min(target, provenT*1.08);
+    // self-calibration: shift by the Coach's own measured bias on this lift
+    const bias=coachBias(rec.name);
+    if(bias) target*=(1-bias);
     target = snapWeight(target, type);
 
     if(last.reps>=REP_HIGH || (rir!=null && rir>=3)){
@@ -3465,6 +3496,9 @@ function prescribe(rec, st){
   }
 
   const missN=missStreak(rec.name);
+  const biasAdj=coachBias(rec.name);
+  if(biasAdj && !bw && st.S.length>1 && !(st.stalled>=2||st.repSlide))
+    why += ` Target ${biasAdj>0?'trimmed':'raised'} <b>${Math.abs(Math.round(biasAdj*100))}%</b> because the Coach has been running ${biasAdj>0?'hot':'cold'} on this lift in its own scored track record.`;
   if(missN>=2) why += ` You have missed the target <b>${missN} sessions running</b>, so the jump is deliberately smaller — repeated misses mean the progression, not you, is wrong.`;
   if(daysOff>=10) why += ` <b>${daysOff} days off</b> — the target is trimmed slightly for detraining.`;
   else if(daysOff<=1) why += ` Trained <b>${daysOff===0?'today':'yesterday'}</b> — expect a little residual fatigue.`;
@@ -3841,7 +3875,7 @@ function scorePredictions(s){
   DB.predLog=DB.predLog||[];
   s.exercises.forEach(e=>{
     if(!e.pred || !e.sets.length) return;
-    const best=bestSet(e.sets);
+    const best=bestSet(heavySets(e.sets));   // outlier-filtered: a typo'd set must not score the models
     const actualCap = best.weight>0 ? e1rmSet(best.weight,best.reps) : best.reps;
     const rec={name:e.name, t:s.start, actual:{reps:best.reps, w:best.weight}};
     ['coach','fc'].forEach(m=>{
@@ -3857,6 +3891,18 @@ function scorePredictions(s){
     DB.predLog.push(rec);
   });
   if(DB.predLog.length>400) DB.predLog=DB.predLog.slice(-400);
+}
+/* Rolling bias correction: if the Coach has run consistently hot or cold on a lift,
+   shift its next target by the median signed error of the last 6 scored predictions.
+   Blown data points (|err|>25%, i.e. typos or one-off disasters) are excluded, and the
+   correction is capped at ±5% so it can only trim, never steer. */
+function coachBias(name){
+  const errs=(DB.predLog||[])
+    .filter(r=>r.name.toLowerCase()===String(name).toLowerCase() && r.coach)
+    .slice(-6).map(r=>r.coach.err)
+    .filter(e=>typeof e==='number' && Math.abs(e)<=25);
+  if(errs.length<2) return 0;
+  return Math.max(-5, Math.min(5, medianOf(errs)))/100;
 }
 function modelAccuracy(name){
   const rows=(DB.predLog||[]).filter(r=>!name || r.name.toLowerCase()===String(name).toLowerCase());
