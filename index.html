@@ -1628,7 +1628,7 @@ function renderHome(){
     list.innerHTML=`<div class="card"><div class="empty" style="padding:14px 6px">
       No saved workouts yet.<br>Create one — e.g. <b style="color:var(--ink)">Biceps Day</b> with pullups, hammer curls, cable curls — and it'll always be here, one tap from starting.</div></div>`;
   }
-  DB.routines.forEach(rt=>{
+  const addCard=rt=>{
     const last=lastSessionOfRoutine(rt.id);
     const card=document.createElement('div');
     card.className='card routine-card';
@@ -1650,7 +1650,19 @@ function renderHome(){
     if(af) af.onclick=e=>{ e.stopPropagation(); openLag(rt.focus); };
     card.onclick=()=>startFromRoutine(rt);
     list.appendChild(card);
-  });
+  };
+  // main workouts first; FOCUS and 1–2 exercise routines get their own section below
+  const isAccRt=r=>{ const man=(DB.settings.recAccessory||{})[r.name]; return man!=null ? !!man : !!(r.focus || r.exercises.length<=2); };
+  const mainRts=DB.routines.filter(r=>!isAccRt(r)), accRts=DB.routines.filter(isAccRt);
+  mainRts.forEach(addCard);
+  if(accRts.length){
+    const h=document.createElement('div');
+    h.className='eyebrow';
+    h.style.cssText='margin:16px 0 8px';
+    h.textContent='Focus & accessory · not part of the main rotation';
+    list.appendChild(h);
+    accRts.forEach(addCard);
+  }
 
   renderReadiness(); renderToday(); renderWeekVolume(); renderRecovery(); renderNudge(); renderCoachAlerts();
   renderPastSessions();
@@ -4218,15 +4230,19 @@ function trainingCandidates(){
   DB.routines.forEach(r=>{
     const last=finished().filter(s=>s.routineId===r.id).sort((a,b)=>b.start-a.start)[0];
     const t=last?last.start:0;
-    out.push({name:r.name, routine:r, t, days:t?daysAgo(t):999, never:!t});
+    // FOCUS and 1–2 exercise routines are accessory work: shown, but never the day's pick
+    const man=(DB.settings.recAccessory||{})[r.name];
+    const acc = man!=null ? !!man : !!(r.focus || r.exercises.length<=2);
+    out.push({name:r.name, routine:r, t, days:t?daysAgo(t):999, never:!t, acc});
   });
   // muscle groups trained outside saved workouts (quick lifts, focus sessions)
   Object.entries(map).forEach(([name,v])=>{
     if(v.kind!=='lift') return;
     if(out.some(o=>o.name.toLowerCase()===name.toLowerCase())) return;
-    out.push({name, routine:null, t:v.t, days:daysAgo(v.t), never:false});
+    out.push({name, routine:null, t:v.t, days:daysAgo(v.t), never:false, acc:isAccessory(name,v)});
   });
-  return out.sort((a,b)=>b.days-a.days);
+  // main workouts by staleness first; accessory/focus work always after them
+  return out.sort((a,b)=>(a.acc-b.acc)||(b.days-a.days));
 }
 function renderToday(){
   const card=$('todayCard'); if(!card) return;
@@ -4238,7 +4254,7 @@ function renderToday(){
     return;
   }
   $('todayStart').classList.remove('hidden'); $('todayAlt').classList.remove('hidden');
-  const pick=cands[0];
+  const pick=cands.find(c=>!c.acc)||cands[0];   // the day's pick is always a MAIN workout
   $('todayName').textContent=pick.name;
   let why;
   if(pick.never) why=`You have never logged <b>${pick.name}</b> — best place to start.`;
@@ -4252,15 +4268,20 @@ function renderToday(){
     if(pick.routine) startFromRoutine(pick.routine);
     else { toast(`Start ${pick.name} from your workouts below, or use Quick lift`); }
   };
-  // alternatives
+  // alternatives: remaining MAIN workouts by staleness, then focus/accessory work labeled below
+  const alts=cands.filter(c=>c!==pick);
   const list=$('todayAltList');
-  list.innerHTML=cands.slice(1,6).map((c,i)=>`
-    <div class="alt-row" data-alt="${i+1}">
-      <span class="alt-name">${c.name}</span>
-      <span class="alt-days">${c.never?'never trained':c.days===0?'today':c.days===1?'yesterday':c.days+' days'}</span>
-    </div>`).join('') || '<div class="rec-none">No other workouts yet.</div>';
+  const dayLbl=c=>c.never?'never trained':c.days===0?'today':c.days===1?'yesterday':c.days+' days';
+  const mains=alts.filter(c=>!c.acc), accs=alts.filter(c=>c.acc);
+  const row=(c,i)=>`
+    <div class="alt-row" data-alt="${i}" ${c.acc?'style="opacity:.65"':''}>
+      <span class="alt-name">${c.name}${c.acc?' <span class="muted" style="font-size:11px">· focus/accessory</span>':''}</span>
+      <span class="alt-days">${dayLbl(c)}</span>
+    </div>`;
+  const ordered=[...mains, ...accs.slice(0,4)];
+  list.innerHTML=ordered.map((c,i)=>row(c,i)).join('') || '<div class="rec-none">No other workouts yet.</div>';
   list.querySelectorAll('[data-alt]').forEach(r=>r.onclick=()=>{
-    const c=cands[+r.dataset.alt];
+    const c=ordered[+r.dataset.alt];
     if(c && c.routine) startFromRoutine(c.routine);
     else toast(`Start ${c.name} from your workouts below`);
   });
